@@ -1,20 +1,28 @@
+// number of rows and columns in the playfield
 const ARR_ROWS = 10;
 const ARR_COLS = 15;
 
+// width and height in pixels of the rectangles of the playfield
 const RECT_WIDTH = 32;
 const RECT_HEIGHT = 32;
 var grid;
 
+// images of the custom robot (fake Niki)
 var nikiUp;
 var nikiLeft;
 var nikiDown;
 var nikiRight;
 
+// row, column in index notation for Niki
+// TODO: make Niki a class
 var nikiCol = 0;
 var nikiRow = 0;
-var nikiDirection = 0;
+// when reversing the direction it subtracts, so to avoid a negative just make it very large
+// the direction is determined modulo 4, where 0 is north, 1 is east, 2 is south, 3 is west
+var nikiDirection = (1  << 30);
 var nikiNumOfBalls = 0;
 
+// by default enable placing stuff on the field
 var builderMode = true;
 
 class gridSquare {
@@ -63,6 +71,8 @@ function drawGrid(){
     for (let j = 0; j < ARR_ROWS; j++){
       rect(i * RECT_WIDTH, j * RECT_HEIGHT, RECT_WIDTH, RECT_HEIGHT);
       
+      // draw the balls starting from the middle, just like in the original Niki program
+      // the constants are determined by trial and error
       if(grid[i][j].numOfBalls > 0){
         for(let n = 0; n < grid[i][j].numOfBalls; n++){
           circle(i * RECT_WIDTH + ((n + 1) % 3) * 9 + 7, 
@@ -72,6 +82,7 @@ function drawGrid(){
       }
       
       stroke(255, 0, 0);
+      // draw all the walls in red
       if(grid[i][j].leftWall){
         line(i * RECT_WIDTH, j * RECT_HEIGHT, i * RECT_WIDTH, (j + 1) * RECT_HEIGHT);
       }
@@ -93,6 +104,7 @@ function drawGrid(){
 }
 
 function loadNikis(){
+  // all Nikis are encoded as base64 images in order to have everything contained in the script itself
   nikiUp = loadImage("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAABEZJREFUWEfNl19sk2UUxn/v+7W0Hc45NtzWsYGIG0OJCTFqzIJ/IjJGcToMjguGUYwIFyhzirvRGyImbpKgMUIMu3ARMRlT/hpNjBocRFgihjAmizITYAKbyGi7rt97zPe5wTBubccInoumTc573qfnOed5vk9xg0Pd4PsZE4DsQFDyI6c5lZbH2fCpMdUY+uNjOmzbIjn+ArpjXVhKj6nGtQEQI1lpQXounULr6wwgM5AryoBSYFDoQejG/Tb0CaJAK0NPuDuljoya7Mu9V7LnV0F/hAOf1CFw1dA4v4dHdkz4Mqp4MsOBm1yMmDjRmyGTquroRzNv6WNcKJmNeGwMHreywUZhISIuKC2GNLHo8xgO3VHAuUhywzkigJs8GZK5tI44ioefKWdbdci9bLQQ8bLw4HEOFo8DAKcDActHXGme2P0NjdULsQys+P4o3731Ae17Nrl9eH3/EU70Rvlq1Uv0/n6Q8h86aC0uoDd6OikaRkzKyCySVevfZPPaGha17KXxuRCQxtR5z3Ji61q8+cUoDLcvWs0v79diLMGaUkRZazuHiwqIobgQTUzDiADSM2bI7LkLOPb1p1Tu+paPli8APEx59EVOblmDNW06ShR3la/mpw9rUWoAVTCTstYO2ooKiOLjr+hvCbswYsKkQFCUGIyCis/20biyEkRjicHWBpzhc0fin91wltJG8/iBDvYXFXL+WimY6M2U7Ko3iOg46Wc6mbNpI80PzkbEpvpAO914XG3YV1oCAwPubIYOdTAQ1/xYEuRc5BpnwCmYt6xBbKXxdx7GTJuFEcsdPGcV9eBCGB1HGw+KuEtR+PMGelPwh4Qc/dfaZUzIEaUddVT0Rs6MqUbSXpDjzXe7gHIUQVzGnSievwStoX3vdndOnIF05DhZ7pMGEKyud2hnoLme0p87sbXHHT6NwUIRE1Ba8BjBaEPL9LSUOpIwObj8bTG2Jty8kYeOHOOLGTdfPjPZlytn+69QUNYVk32FExLWHE5rwuT86g1iG4vIjncJtbXRVJzrnnEuHyo0BCJ0MiK7pgYS1kwJQGH1OxIzQri5gcq2Dhpnpqvhlw8HsfDXftl9m298AWT588T3VA19LfVMrniZzqZXR6SgvCsme8abgix/rviW1HBxRwOZVevo2rJmFAD9sqdw3DvwPwbwb5Eq77pOHfAvqSG8vYH0ZetcrRfHBLTCLwPExOP6g1dp7q57gZ0zxnkNswN5YmNjCcSVIz02Mvho6iig44SihAm2QbRFTzg5E0paCYcSM/15Mmt+Be17WzgfuyI+80IrZU7ZXLa+UsMfSVpwSjowlJzlv1WMpei9dPVjt7OmG5re4/nFi1Pa/5Q7cEsgT+5cVMXRndv4c5jX31daKfc/XcHHta9xPpq6MyaN2vvACnlk22b6ULQXBS+73qRQndyzeT0XbZvjJVPo6UsNRNIAknvNSD3rbzBEyDCHNRnCAAAAAElFTkSuQmCC");
   
   nikiLeft = loadImage("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAABElJREFUWEfFl11sFGUUhp/vm112t1hraZF2SwsithQlJsS/GII/ESnt1moxWC4oRjEiXKBUFHujN0RMpJKgMZYYegGxYlKqQMFoYtQgEKGJGEIpNEpN+BHaipTd7XbnO2YGqiWy7G4p4VxsdpLznXnnvO8574ziJoe6yfdnRAByA0EpiJziZEY+Z8MnR1Rj6MFHdNi2RSb4CzkT68ZSekQ1rg+AGMnJCNJ78SRa32AA2YE8UQaUAoNCX4Zu3H9DvyAKtDL0hs+k1ZFrJvvyHpDcuTUwEGHfZ/UIXCEa53p45MaEr6OKZ7IcuKlFwsSx3iwZV1PPAJo5C5/kfOkMxGNj8LiVDTYKCxFxQWkxZIhFv8dw4K5CzkVSE2dCALd4siR7YT1xFI89X05zbci92bVCxEvF/qPsLxkFAE4HApaPuNI8vfM7mmorsAws+fEwP7z7MR1tG9w+vLXnEMf7onyz7FX6/thP+U+d7C0ppC96KiUaEiZlZRfLsjXv0LiyjsrWXTS9GAIymDTnBY5vWom3oASF4c7K5Rz7aBXGEqyJxZTt7eBgcSExFOejyWlICCAza6rMmD2PI99+TvWO7/l08TzAw8QnXuHExhVYk6egRHFP+XJ++WQVSg2iCqdRtreT9uJCovj4O/p70i4kTBgXCIoSg1FQ9cVumpZWg2gsMdjagCM+VxKXZsMZShvNU/s62VNcRM/1UjDWmy25NW8T0XEyT3cxc8N6Wh6ZgYhN7b4OzuBxd8PuWaUwOOhqM3Sgk8G45ufSIOci16kBp2D+ogaxlcbfdRAzeTpGLFd4zijqywNhdBxtPCjiLkXhLxvoS8MfknJ0tbHLGjNBlHa2o6IvcnpENVL2ggneArcLKGcjiMu4EyVzF6A1dOza6urEEaSzjlPlPmUAwdp1Du0Mtqxj1q9d2Nrjik9jsFDEBJQWPEYw2tA6JSOtjiRNDi5+T4ytCbes59FDR/hq6q0Jz5R1x2R30ZikNYfTmjS5oHat2MYisu0DQu3tbCnJu+LMeF+enB24pIPQiYjsmBRIWjMtAEW170vMCOGWBqrbO2malvk/AE5BB0TFbwOy8w7f6ALI8eeL79k6+lvXMb7qNbq2vKGcp77adNx/rJu20aYgx58nvgV1XNjWQHbNaro3rkjYgfLuAWkrGvUOJAcwpIGbAmA4FTcMgH9BHeGtDWQuWu3uenFMQCv8MkhMPK4/eJXm3vqX2T51lMcwN5AvNjaWQFw5q8dGLr+aOhvQcUJRwhjbINqiN5yaCaW8CYcSs/35Mn1uFR27WumJ/bf/54SWysyy2Wx6vY4/U7TgtPbAUHKO/3YxlqLv4pWv3c6Yrt3yIS/Nn5/W/KfdgdsC+XJ3ZQ2Htzfz1zCvf3BWtTz0XBWbV71JTzR9Z0wZtffhJfJ4cyP9KDqKg/+63rhQvdzXuIYLts3R0on09qcHImUAqX1mpJ/1D61lwDByIQvWAAAAAElFTkSuQmCC");
@@ -103,8 +115,13 @@ function loadNikis(){
   
 }
 
+// ================ Niki helper functions
 function nikiBallsOnLocation(){
   return ((grid[nikiCol][nikiRow].numOfBalls > 0) ? true : false);
+}
+
+function nikiHasBalls(){
+  return ((nikiNumOfBalls > 0) ? true : false);
 }
 
 function nikiTakeBall(){
@@ -163,7 +180,7 @@ function nikiMove(){
 }
 
 function nikiRotateLeft(){
-  nikiDirection++;
+  nikiDirection--;
 }
 
 function isColliding(){
@@ -183,14 +200,119 @@ function isColliding(){
   }
 }
 
+// work in progress, very rough, should turn it into real interpreter
+function nikiPascalToJS(inputPS){
+    var parsedString = inputPS.replace(/ +(?= )/g,'');
+  var functionNames = ["vorne_frei", "vor", "drehe_links", "platz_belegt", "hat_Vorrat", "nordwaerts", "ostwaerts", "westwaerts", "sudwaerts"];
+
+    var rules = [[" not ", "!"],
+                [";", "\n"],
+                [" ", "\n"],
+                [".", ""],
+                ["{", "/*"],
+                ["}", "*/"],
+                ["if", "if("],
+                ["then", "){"],
+                ["begin", "{"],
+                ["end", "}"],
+                ["do", ")"],
+                ["repeat", "do {"],
+                ["while", "while("],
+                ["until", " }while("],
+                ["procedure", "function "],
+                ["program", ""]
+
+            ];
+                
+    for(let i = 0; i < rules.length; i++){
+        parsedString = parsedString.replaceAll(rules[i][0], rules[i][1]);
+    }
+  
+  parsedString = parsedString.replace(/[\r\n]{2,}/g, "\n");
+  parsedString = parsedString.split("\n").slice(2).join("\n");
+  parsedString = parsedString.split("\n");
+  for(let i = 0; i < parsedString.length; i++){
+    if(parsedString[i].includes("function")){
+      functionNames.push(parsedString[i + 1]);
+      parsedString[i + 1] += "()";
+    }
+    if(parsedString[i].includes("while(")){
+      parsedString[i] += ")";
+    }
+  }
+  
+  parsedString = parsedString.join("\n");
+  for(let i = 0; i < functionNames.length; i++){
+    parsedString = parsedString.replaceAll(functionNames[i], functionNames[i] + "()");
+  }
+  parsedString = parsedString.replaceAll("()()", "()");
+  
+  return parsedString;
+}
+
+
+// ================ ORIGINAL NIKI FUNCTIONS IN GERMAN
+function drehe_links(){
+  nikiRotateLeft();
+}
+
+function vor(){
+  nikiMove();
+}
+
+function gib_ab(){
+  nikiDropBall();
+}
+
+function nimm_auf(){
+  nikiTakeBall();
+}
+
+function vorne_frei(){
+  return isColliding();
+}
+
+function platz_belegt(){
+  return nikiBallsOnLocation();
+}
+
+function hat_Vorrat(){
+  return nikiHasBalls();
+}
+
+function nordwaerts(){
+  return ((nikiDirection % 4 === 0) ? true : false);
+}
+
+function ostwaerts(){
+  return ((nikiDirection % 4 === 1) ? true : false);
+}
+
+function suedwaerts(){
+  return ((nikiDirection % 4 === 2) ? true : false);
+}
+
+function westwaerts(){
+  return ((nikiDirection % 4 === 3) ? true : false);
+}
+
+var testStr = ` vor(); drehe_links(); vor(); vor(); nimm_auf();
+`;
+
 function setup() {
-  createCanvas(512, 512);
+  createCanvas(ARR_COLS * RECT_HEIGHT, ARR_ROWS * RECT_WIDTH);
   loadNikis();
   
   createGrid();
   
+  // basically random, change as you wish
+  nikiCol = 2;
+  nikiRow = 2;
   grid[1][0].numOfBalls = 9;
   grid[0][1].numOfBalls = 1;
+  
+  // run the commands with eval
+  eval(testStr);
 }
 
 function draw() {
@@ -205,6 +327,9 @@ function mouseClicked() {
   if(builderMode){
     for (let i = 0; i < ARR_COLS; i++) {
       for (let j = 0; j < ARR_ROWS; j++){
+        
+        // if the mouse press is in the middle third of the square, place niki there
+        // and end the for loop
         if(((mouseX >= i * RECT_WIDTH + RECT_WIDTH / 3) &&
             (mouseX <= (i + 1) * RECT_WIDTH - RECT_WIDTH / 3)) &&
            ((mouseY >= j * RECT_HEIGHT + RECT_HEIGHT / 3) &&
@@ -214,6 +339,8 @@ function mouseClicked() {
           break;
         }
         
+        // if the click is a third of a width left or right of a wall, place a wall on
+        // both sides there
         if(((mouseX >= i * RECT_WIDTH + RECT_WIDTH / 3) &&
             (mouseX <= (i + 1) * RECT_WIDTH - RECT_WIDTH / 3)) &&
            ((mouseY >= j * RECT_HEIGHT) &&
@@ -228,6 +355,7 @@ function mouseClicked() {
           }
         }
 
+        // same as before but vertical
         if(((mouseX >= i * RECT_WIDTH) &&
             (mouseX <= (i + 1) * RECT_WIDTH)) &&
            ((mouseY >= j * RECT_HEIGHT + RECT_HEIGHT / 3) &&
@@ -242,6 +370,7 @@ function mouseClicked() {
           }
         }
         
+        // if the click is in the bottom third of a square, place a ball
         if ((mouseX >= i * RECT_WIDTH + RECT_WIDTH * 2 / 3) &&
             (mouseX <= (i + 1) * RECT_WIDTH) &&
             (mouseY >= j * RECT_HEIGHT + RECT_HEIGHT * 2 / 3) &&
@@ -253,7 +382,8 @@ function mouseClicked() {
   }
 }
 
-function keyPressed() {
+// functions for testing
+/*function keyPressed() {
   if (keyCode === LEFT_ARROW) {
     nikiCol -= 1;
   } else if (keyCode === RIGHT_ARROW) {
@@ -271,4 +401,5 @@ function keyPressed() {
   } else if (keyCode === ESCAPE){
     nikiRotateLeft();
   }
-}
+}*/
+
