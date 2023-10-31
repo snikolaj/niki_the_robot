@@ -91,6 +91,7 @@ function setup() {
   createGrid();
   
   grid[1][0].numOfBalls = 9;
+  grid[0][1].numOfBalls = 1;
 }
 
 function draw() {
@@ -99,4 +100,26 @@ function draw() {
   stroke(0);
   
   drawGrid();
+}
+
+function mouseClicked() {
+  for (let i = 0; i < ARR_COLS; i++) {
+    for (let j = 0; j < ARR_ROWS; j++){
+      if(((mouseX >= i * RECT_WIDTH + 10) 
+          && (mouseX <= (i + 1) * RECT_WIDTH - 10))
+        && ((mouseY >= j * RECT_HEIGHT)
+         && (mouseY <= (j + 1) * RECT_HEIGHT))
+        ){
+        console.log(`Horizontal, ${i + 1}`);
+      }
+      
+      if(((mouseX >= i * RECT_WIDTH) 
+          && (mouseX <= (i + 1) * RECT_WIDTH))
+        && ((mouseY >= j * RECT_HEIGHT + 10)
+         && (mouseY <= (j + 1) * RECT_HEIGHT - 10))
+        ){
+        console.log(`Vertical, ${j + 1}`);
+      }
+    }
+  }
 }
