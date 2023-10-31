@@ -13,6 +13,7 @@ var nikiRight;
 var nikiCol = 0;
 var nikiRow = 0;
 var nikiDirection = 0;
+var nikiNumOfBalls = 0;
 
 var builderMode = true;
 
@@ -102,6 +103,41 @@ function loadNikis(){
   
 }
 
+function takeBall(){
+  if(grid[nikiCol][nikiRow].numOfBalls > 0){
+    grid[nikiCol][nikiRow].numOfBalls -= 1;
+    nikiNumOfBalls += 1;
+  }else{
+    console.log("Error: no more balls");
+  }
+}
+
+function dropBall(){
+  if(nikiNumOfBalls > 0){
+    grid[nikiCol][nikiRow].numOfBalls += 1;
+    nikiNumOfBalls -= 1;
+  }else{
+    console.log("Error: no more balls");
+  }
+}
+
+function isColliding(){
+  switch(nikiDirection % 4){
+    case 0:
+      return grid[nikiCol][nikiRow].topWall;
+      
+    case 1:
+      return grid[nikiCol][nikiRow].rightWall;
+      
+    case 2:
+      return grid[nikiCol][nikiRow].bottomWall;
+      
+    case 3:
+      return grid[nikiCol][nikiRow].leftWall;
+      
+  }
+}
+
 function setup() {
   createCanvas(512, 512);
   loadNikis();
@@ -154,5 +190,21 @@ function mouseClicked() {
         
       }
     }
+  }
+}
+
+function keyPressed() {
+  if (keyCode === LEFT_ARROW) {
+    nikiCol -= 1;
+  } else if (keyCode === RIGHT_ARROW) {
+    nikiCol += 1;
+  } else if (keyCode === UP_ARROW) {
+    nikiRow -= 1;
+  } else if (keyCode === DOWN_ARROW) {
+    nikiRow += 1;
+  } else if (keyCode === BACKSPACE){
+    takeBall();
+  } else if (keyCode === ENTER){
+    dropBall();
   }
 }
