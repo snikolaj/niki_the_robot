@@ -14,6 +14,18 @@ var nikiCol = 0;
 var nikiRow = 0;
 var nikiDirection = 0;
 
+var builderMode = true;
+
+class gridSquare {
+  constructor(numOfBalls, topWall, rightWall, bottomWall, leftWall){
+    this.numOfBalls = numOfBalls; 
+    this.topWall = topWall; 
+    this.rightWall = rightWall; 
+    this.bottomWall = bottomWall;
+    this.leftWall = leftWall;
+  }
+}
+
 function drawNiki(){
     switch(nikiDirection % 4){
       case 0:
@@ -29,16 +41,6 @@ function drawNiki(){
         image(nikiRight, nikiCol * RECT_WIDTH, nikiRow * RECT_HEIGHT);
         break;
     }
-}
-
-class gridSquare {
-  constructor(numOfBalls, topWall, rightWall, bottomWall, leftWall){
-    this.numOfBalls = numOfBalls; 
-    this.topWall = topWall; 
-    this.rightWall = rightWall; 
-    this.bottomWall = bottomWall;
-    this.leftWall = leftWall;
-  }
 }
 
 function createGrid(){
@@ -67,6 +69,22 @@ function drawGrid(){
                  5);
         }
       }
+      
+      stroke(255, 0, 0);
+      if(grid[i][j].leftWall){
+        line(i * RECT_WIDTH, j * RECT_HEIGHT, i * RECT_WIDTH, (j + 1) * RECT_HEIGHT);
+      }
+      if(grid[i][j].rightWall){
+        line((i + 1) * RECT_WIDTH, j * RECT_HEIGHT, (i + 1) * RECT_WIDTH, (j + 1) * RECT_HEIGHT);
+      }
+      if(grid[i][j].topWall){
+        line(i * RECT_WIDTH, j * RECT_HEIGHT, (i + 1) * RECT_WIDTH, j * RECT_HEIGHT);
+      }
+      if(grid[i][j].bottomWall){
+        line(i * RECT_WIDTH, (j + 1) * RECT_HEIGHT, (i + 1) * RECT_WIDTH, (j + 1) * RECT_HEIGHT);
+      }
+      
+      stroke(0);
     }
   }
   
@@ -103,22 +121,37 @@ function draw() {
 }
 
 function mouseClicked() {
-  for (let i = 0; i < ARR_COLS; i++) {
-    for (let j = 0; j < ARR_ROWS; j++){
-      if(((mouseX >= i * RECT_WIDTH + 10) 
-          && (mouseX <= (i + 1) * RECT_WIDTH - 10))
-        && ((mouseY >= j * RECT_HEIGHT)
-         && (mouseY <= (j + 1) * RECT_HEIGHT))
-        ){
-        console.log(`Horizontal, ${i + 1}`);
-      }
-      
-      if(((mouseX >= i * RECT_WIDTH) 
-          && (mouseX <= (i + 1) * RECT_WIDTH))
-        && ((mouseY >= j * RECT_HEIGHT + 10)
-         && (mouseY <= (j + 1) * RECT_HEIGHT - 10))
-        ){
-        console.log(`Vertical, ${j + 1}`);
+  if(builderMode){
+    for (let i = 0; i < ARR_COLS; i++) {
+      for (let j = 0; j < ARR_ROWS; j++){
+        if(((mouseX >= i * RECT_WIDTH + RECT_WIDTH / 3) 
+            && (mouseX <= (i + 1) * RECT_WIDTH - RECT_WIDTH / 3))
+          && ((mouseY >= j * RECT_HEIGHT)
+           && (mouseY <= (j + 1) * RECT_HEIGHT))
+          ){
+          if(mouseY > j * RECT_HEIGHT + RECT_HEIGHT / 2){
+            grid[i][j].bottomWall = true;
+            grid[i][j + 1].topWall = true;
+          }else{
+            grid[i][j - 1].bottomWall = true;
+            grid[i][j].topWall = true;
+          }
+        }
+
+        if(((mouseX >= i * RECT_WIDTH) 
+            && (mouseX <= (i + 1) * RECT_WIDTH))
+          && ((mouseY >= j * RECT_HEIGHT + RECT_HEIGHT / 3)
+           && (mouseY <= (j + 1) * RECT_HEIGHT - RECT_HEIGHT / 3))
+          ){
+          if(mouseX > i * RECT_WIDTH + RECT_WIDTH / 2){
+            grid[i][j].rightWall = true;
+            grid[i + 1][j].leftWall = true;
+          }else{
+            grid[i - 1][j].rightWall = true;
+            grid[i][j].leftWall = true;
+          }
+        }
+        
       }
     }
   }
