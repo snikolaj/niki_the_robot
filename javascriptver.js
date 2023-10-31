@@ -103,8 +103,12 @@ function loadNikis(){
   
 }
 
-function takeBall(){
-  if(grid[nikiCol][nikiRow].numOfBalls > 0){
+function nikiBallsOnLocation(){
+  return ((grid[nikiCol][nikiRow].numOfBalls > 0) ? true : false);
+}
+
+function nikiTakeBall(){
+  if(nikiBallsOnLocation()){
     grid[nikiCol][nikiRow].numOfBalls -= 1;
     nikiNumOfBalls += 1;
   }else{
@@ -112,13 +116,54 @@ function takeBall(){
   }
 }
 
-function dropBall(){
+function nikiDropBall(){
   if(nikiNumOfBalls > 0){
     grid[nikiCol][nikiRow].numOfBalls += 1;
     nikiNumOfBalls -= 1;
   }else{
     console.log("Error: no more balls");
   }
+}
+
+function nikiMove(){
+  switch(nikiDirection % 4){
+    case 0:
+      if(!isColliding()){
+        nikiRow -= 1;
+      }else{
+        console.log("Error: wall");
+      }
+      break;
+      
+    case 1:
+      if(!isColliding()){
+        nikiCol += 1;
+      }else{
+        console.log("Error: wall");
+      }
+      break;
+      
+    case 2:
+      if(!isColliding()){
+        nikiRow += 1;
+      }else{
+        console.log("Error: wall");
+      }
+      break;
+      
+    case 3:
+      if(!isColliding()){
+        nikiCol -= 1;
+      }else{
+        console.log("Error: wall");
+      }
+      break;
+      
+  }
+}
+
+function nikiRotateLeft(){
+  nikiDirection++;
 }
 
 function isColliding(){
@@ -160,10 +205,10 @@ function mouseClicked() {
   if(builderMode){
     for (let i = 0; i < ARR_COLS; i++) {
       for (let j = 0; j < ARR_ROWS; j++){
-        if(((mouseX >= i * RECT_WIDTH + RECT_WIDTH / 3) 
-            && (mouseX <= (i + 1) * RECT_WIDTH - RECT_WIDTH / 3))
-          && ((mouseY >= j * RECT_HEIGHT)
-           && (mouseY <= (j + 1) * RECT_HEIGHT))
+        if(((mouseX >= i * RECT_WIDTH + RECT_WIDTH / 3) &&
+            (mouseX <= (i + 1) * RECT_WIDTH - RECT_WIDTH / 3)) &&
+           ((mouseY >= j * RECT_HEIGHT) &&
+            (mouseY <= (j + 1) * RECT_HEIGHT))
           ){
           if(mouseY > j * RECT_HEIGHT + RECT_HEIGHT / 2){
             grid[i][j].bottomWall = true;
@@ -174,10 +219,10 @@ function mouseClicked() {
           }
         }
 
-        if(((mouseX >= i * RECT_WIDTH) 
-            && (mouseX <= (i + 1) * RECT_WIDTH))
-          && ((mouseY >= j * RECT_HEIGHT + RECT_HEIGHT / 3)
-           && (mouseY <= (j + 1) * RECT_HEIGHT - RECT_HEIGHT / 3))
+        if(((mouseX >= i * RECT_WIDTH) &&
+            (mouseX <= (i + 1) * RECT_WIDTH)) &&
+           ((mouseY >= j * RECT_HEIGHT + RECT_HEIGHT / 3) &&
+            (mouseY <= (j + 1) * RECT_HEIGHT - RECT_HEIGHT / 3))
           ){
           if(mouseX > i * RECT_WIDTH + RECT_WIDTH / 2){
             grid[i][j].rightWall = true;
@@ -203,8 +248,12 @@ function keyPressed() {
   } else if (keyCode === DOWN_ARROW) {
     nikiRow += 1;
   } else if (keyCode === BACKSPACE){
-    takeBall();
+    nikiTakeBall();
   } else if (keyCode === ENTER){
-    dropBall();
+    nikiDropBall();
+  } else if (keyCode === SHIFT){
+    nikiMove();
+  } else if (keyCode === ESCAPE){
+    nikiRotateLeft();
   }
 }
