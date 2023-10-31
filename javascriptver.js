@@ -207,6 +207,15 @@ function mouseClicked() {
       for (let j = 0; j < ARR_ROWS; j++){
         if(((mouseX >= i * RECT_WIDTH + RECT_WIDTH / 3) &&
             (mouseX <= (i + 1) * RECT_WIDTH - RECT_WIDTH / 3)) &&
+           ((mouseY >= j * RECT_HEIGHT + RECT_HEIGHT / 3) &&
+            (mouseY <= (j + 1) * RECT_HEIGHT - RECT_HEIGHT / 3))){
+          nikiCol = i;
+          nikiRow = j;
+          break;
+        }
+        
+        if(((mouseX >= i * RECT_WIDTH + RECT_WIDTH / 3) &&
+            (mouseX <= (i + 1) * RECT_WIDTH - RECT_WIDTH / 3)) &&
            ((mouseY >= j * RECT_HEIGHT) &&
             (mouseY <= (j + 1) * RECT_HEIGHT))
           ){
@@ -233,6 +242,12 @@ function mouseClicked() {
           }
         }
         
+        if ((mouseX >= i * RECT_WIDTH + RECT_WIDTH * 2 / 3) &&
+            (mouseX <= (i + 1) * RECT_WIDTH) &&
+            (mouseY >= j * RECT_HEIGHT + RECT_HEIGHT * 2 / 3) &&
+            (mouseY <= (j + 1) * RECT_HEIGHT)){
+          grid[i][j].numOfBalls += 1;
+        }
       }
     }
   }
