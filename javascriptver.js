@@ -82,6 +82,7 @@ function drawGrid(){
       }
       
       stroke(255, 0, 0);
+      strokeWeight(3);
       // draw all the walls in red
       if(grid[i][j].leftWall){
         line(i * RECT_WIDTH, j * RECT_HEIGHT, i * RECT_WIDTH, (j + 1) * RECT_HEIGHT);
@@ -95,7 +96,7 @@ function drawGrid(){
       if(grid[i][j].bottomWall){
         line(i * RECT_WIDTH, (j + 1) * RECT_HEIGHT, (i + 1) * RECT_WIDTH, (j + 1) * RECT_HEIGHT);
       }
-      
+      strokeWeight(1);
       stroke(0);
     }
   }
@@ -296,7 +297,7 @@ function westwaerts(){
   return ((nikiDirection % 4 === 3) ? true : false);
 }
 
-var testStr = ` vor(); drehe_links(); vor(); vor(); nimm_auf();
+var testStr = ` vor();
 `;
 
 function setup() {
@@ -402,4 +403,3 @@ function mouseClicked() {
     nikiRotateLeft();
   }
 }*/
-
