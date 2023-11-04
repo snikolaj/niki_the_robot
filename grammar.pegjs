@@ -6,11 +6,14 @@ functionDeclaration
   { return { type: 'functionDeclaration', name, body }; }
 
 statements
-  = stmts:(functionCall / ifStatement / whileStatement)* { return stmts; }
+  = stmts:(functionCall / ifStatement / doWhileStatement / whileStatement)* { return stmts; }
 
 ifStatement
   = _ "if" _ "(" _ condition:expression _ ")" _ "{" _ body:statements _ "}" 
   { return { type: 'ifStatement', condition, body }; }
+
+doWhileStatement
+  = _ "do" _ "{" _ body:statements _ "}" _ "while" _ "(" _ condition:expression _ ")" _ ";"
 
 whileStatement
   = _ "while" _ "(" _ condition:expression _ ")" _ "{" _ body:statements _ "}" 
