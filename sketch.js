@@ -53,6 +53,7 @@ const NIKI_FUNCTIONS = {
         if (nikiNumOfBalls > 0) {
             grid[nikiCol][nikiRow].numOfBalls++;
             nikiNumOfBalls--;
+            updateBallCounterDisplay();
             logOutput("Niki dropped a ball.");
         } else {
             throw new Error("Niki has no balls to drop!");
@@ -62,6 +63,7 @@ const NIKI_FUNCTIONS = {
         if (grid[nikiCol][nikiRow].numOfBalls > 0) {
             grid[nikiCol][nikiRow].numOfBalls--;
             nikiNumOfBalls++;
+            updateBallCounterDisplay();
             logOutput("Niki picked up a ball.");
         } else {
             throw new Error("No ball to pick up here!");
@@ -115,6 +117,13 @@ function preload() {
 function setup() {
     let canvas = createCanvas(ARR_COLS * RECT_WIDTH, ARR_ROWS * RECT_HEIGHT);
     canvas.parent('canvas-container'); // Put canvas in the container div
+
+    // --- Disable right-click context menu ON THE CANVAS element ---
+    canvas.elt.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+    });
+    // --- End context menu disabling ---
+
     resetNiki(); // Initialize grid and Niki's state
 
     // Event Listeners
@@ -124,7 +133,29 @@ function setup() {
         builderMode = e.target.checked;
     });
 
+    // --- Add Tab Key Handling for Textarea ---
+    const editor = document.getElementById('code-editor');
+    editor.addEventListener('keydown', function(e) {
+        if (e.key === 'Tab') {
+            e.preventDefault(); // Prevent focus change
+
+            // Get cursor position/selection
+            var start = this.selectionStart;
+            var end = this.selectionEnd;
+
+            // Set textarea value to: text before caret + tab + text after caret
+            this.value = this.value.substring(0, start) +
+                         "\t" + // Insert tab character
+                         this.value.substring(end);
+
+            // Put caret at right position again
+            this.selectionStart = this.selectionEnd = start + 1;
+        }
+    });
+    // --- End Tab Key Handling ---
+
     logOutput("Setup complete. Ready to run code or build.");
+    updateBallCounterDisplay(); // <-- Initial display update
 }
 
 function resetNiki() {
@@ -136,6 +167,7 @@ function resetNiki() {
     procedures = {}; // Clear user procedures
     logOutput("Niki and grid reset.");
     clearError();
+    updateBallCounterDisplay(); // <-- Update display on reset
 }
 
 function createGrid() {
@@ -155,36 +187,24 @@ function createGrid() {
 // --- Drawing ---
 function draw() {
     background(220);
-    drawGrid();
+    // 1. Draw grid background and walls
+    drawGridBase();
+    // 2. Draw Niki
     drawNiki();
+    // 3. Draw things on top of Niki (balls)
+    drawGridItems();
 }
 
-function drawGrid() {
-    stroke(0);
+// New function for grid base (rectangles and walls)
+function drawGridBase() {
     strokeWeight(1);
+    stroke(0); // Black lines for grid rectangles
+
     for (let i = 0; i < ARR_COLS; i++) {
         for (let j = 0; j < ARR_ROWS; j++) {
+            // Draw the background rectangle
             fill(255); // White square
             rect(i * RECT_WIDTH, j * RECT_HEIGHT, RECT_WIDTH, RECT_HEIGHT);
-
-            // Draw balls
-            if (grid[i][j].numOfBalls > 0) {
-                fill(0, 0, 255); // Blue balls
-                noStroke();
-                // Simple ball drawing for now
-                 const ballSize = 6;
-                 const padding = 4;
-                 const maxBallsPerRow = Math.floor((RECT_WIDTH - 2 * padding) / (ballSize + padding));
-
-                for(let n = 0; n < grid[i][j].numOfBalls; n++){
-                    const ballCol = n % maxBallsPerRow;
-                    const ballRow = Math.floor(n / maxBallsPerRow);
-                    const x = i * RECT_WIDTH + padding + ballCol * (ballSize + padding) + ballSize/2;
-                    const y = j * RECT_HEIGHT + padding + ballRow * (ballSize + padding) + ballSize/2;
-                    circle(x, y, ballSize);
-                }
-                stroke(0); // Reset stroke
-            }
 
             // Draw walls
             stroke(255, 0, 0); // Red walls
@@ -201,8 +221,35 @@ function drawGrid() {
             if (grid[i][j].rightWall) {
                 line((i + 1) * RECT_WIDTH, j * RECT_HEIGHT, (i + 1) * RECT_WIDTH, (j + 1) * RECT_HEIGHT);
             }
-            strokeWeight(1);
-            stroke(0); // Reset stroke
+            // Reset stroke for next iteration's rectangle border
+             strokeWeight(1);
+             stroke(0);
+        }
+    }
+}
+
+// New function for items drawn OVER Niki (balls)
+function drawGridItems() {
+     // Loop again to draw balls (ensures they are on top)
+     for (let i = 0; i < ARR_COLS; i++) {
+        for (let j = 0; j < ARR_ROWS; j++) {
+             // Draw balls
+            if (grid[i][j].numOfBalls > 0) {
+                fill(0, 0, 255); // Blue balls
+                noStroke();
+                const ballSize = 6;
+                const padding = 4;
+                const maxBallsPerRow = Math.floor((RECT_WIDTH - 2 * padding) / (ballSize + padding));
+
+                for(let n = 0; n < grid[i][j].numOfBalls; n++){
+                    const ballCol = n % maxBallsPerRow;
+                    const ballRow = Math.floor(n / maxBallsPerRow);
+                    const x = i * RECT_WIDTH + padding + ballCol * (ballSize + padding) + ballSize/2;
+                    const y = j * RECT_HEIGHT + padding + ballRow * (ballSize + padding) + ballSize/2;
+                    circle(x, y, ballSize);
+                }
+                 stroke(0); // Reset stroke just in case
+            }
         }
     }
 }
@@ -211,14 +258,15 @@ function drawNiki() {
     let img;
     switch (nikiDirection % 4) {
         case 0: img = nikiUp; break;
-        case 1: img = nikiRight; break; // Corrected: 1=East=Right
+        case 1: img = nikiRight; break;
         case 2: img = nikiDown; break;
-        case 3: img = nikiLeft; break;  // Corrected: 3=West=Left
+        case 3: img = nikiLeft; break;
     }
      if (img && nikiCol >= 0 && nikiCol < ARR_COLS && nikiRow >= 0 && nikiRow < ARR_ROWS) {
         image(img, nikiCol * RECT_WIDTH, nikiRow * RECT_HEIGHT, RECT_WIDTH, RECT_HEIGHT);
     }
-    // Draw ball count on Niki
+    // Draw ball count ON Niki (this should still be fine here)
+    // This is drawn AFTER the Niki image, so it appears on top of Niki
     fill(0);
     textSize(10);
     textAlign(CENTER, CENTER);
@@ -242,53 +290,65 @@ function mousePressed() {
     const yInRect = mouseY % RECT_HEIGHT;
     const borderZone = RECT_WIDTH / 4; // How close to edge for wall placement
 
-    // Check for wall placement first (edges are priority)
-    let wallPlaced = false;
+    // Check for wall placement/deletion first (edges are priority)
+    let wallInteracted = false;
+
     // Top wall
-    if (yInRect < borderZone) {
-        if (row > 0) {
-            grid[col][row].topWall = !grid[col][row].topWall;
+    if (yInRect < borderZone && row > 0) {
+        if (mouseButton === LEFT) {
+            grid[col][row].topWall = !grid[col][row].topWall; // Toggle on left click
             grid[col][row - 1].bottomWall = grid[col][row].topWall;
-            wallPlaced = true;
+        } else if (mouseButton === RIGHT) {
+            grid[col][row].topWall = false; // Delete on right click
+            grid[col][row - 1].bottomWall = false;
         }
+        wallInteracted = true;
     }
     // Bottom wall
-    else if (yInRect > RECT_HEIGHT - borderZone) {
-         if (row < ARR_ROWS - 1) {
-            grid[col][row].bottomWall = !grid[col][row].bottomWall;
+    else if (yInRect > RECT_HEIGHT - borderZone && row < ARR_ROWS - 1) {
+        if (mouseButton === LEFT) {
+            grid[col][row].bottomWall = !grid[col][row].bottomWall; // Toggle on left click
             grid[col][row + 1].topWall = grid[col][row].bottomWall;
-            wallPlaced = true;
-         }
+        } else if (mouseButton === RIGHT) {
+            grid[col][row].bottomWall = false; // Delete on right click
+            grid[col][row + 1].topWall = false;
+        }
+        wallInteracted = true;
     }
     // Left wall
-    else if (xInRect < borderZone) {
-        if (col > 0) {
-            grid[col][row].leftWall = !grid[col][row].leftWall;
+    else if (xInRect < borderZone && col > 0) {
+        if (mouseButton === LEFT) {
+            grid[col][row].leftWall = !grid[col][row].leftWall; // Toggle on left click
             grid[col - 1][row].rightWall = grid[col][row].leftWall;
-            wallPlaced = true;
+        } else if (mouseButton === RIGHT) {
+            grid[col][row].leftWall = false; // Delete on right click
+            grid[col - 1][row].rightWall = false;
         }
+        wallInteracted = true;
     }
     // Right wall
-    else if (xInRect > RECT_WIDTH - borderZone) {
-         if (col < ARR_COLS - 1) {
-            grid[col][row].rightWall = !grid[col][row].rightWall;
+    else if (xInRect > RECT_WIDTH - borderZone && col < ARR_COLS - 1) {
+        if (mouseButton === LEFT) {
+            grid[col][row].rightWall = !grid[col][row].rightWall; // Toggle on left click
             grid[col + 1][row].leftWall = grid[col][row].rightWall;
-            wallPlaced = true;
-         }
+        } else if (mouseButton === RIGHT) {
+            grid[col][row].rightWall = false; // Delete on right click
+            grid[col + 1][row].leftWall = false;
+        }
+        wallInteracted = true;
     }
 
-    // If no wall was placed, check for placing Niki or balls
-    if (!wallPlaced) {
-        // Place/remove ball (Right-click to remove)
+    // If no wall was interacted with, check for placing/removing balls (center clicks)
+    if (!wallInteracted) {
         if (mouseButton === LEFT) {
-             grid[col][row].numOfBalls++;
+            grid[col][row].numOfBalls++;
+            logOutput(`Added ball at (${col}, ${row}). Total: ${grid[col][row].numOfBalls}`);
         } else if (mouseButton === RIGHT) {
-             grid[col][row].numOfBalls = max(0, grid[col][row].numOfBalls - 1);
+            if (grid[col][row].numOfBalls > 0) {
+                grid[col][row].numOfBalls--;
+                logOutput(`Removed ball at (${col}, ${row}). Total: ${grid[col][row].numOfBalls}`);
+            }
         }
-    }
-     // Prevent default right-click menu only on canvas
-    if (mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
-        return false;
     }
 }
 
@@ -455,4 +515,12 @@ function logError(message) {
 
 function clearError() {
     errorLog.textContent = '';
+}
+
+// --- Helper function to update the ball counter display ---
+function updateBallCounterDisplay() {
+    const counterElement = document.getElementById('ball-counter');
+    if (counterElement) {
+        counterElement.textContent = `Niki's Balls: ${nikiNumOfBalls}`;
+    }
 } 

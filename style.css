@@ -1,0 +1,31 @@
+body { margin: 0; font-family: sans-serif; display: flex; height: 100vh; }
+#editor-container { width: 50%; padding: 10px; display: flex; flex-direction: column; border-right: 1px solid #ccc; }
+#code-editor {
+    flex-grow: 1;
+    font-family: monospace;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    margin-bottom: 10px;
+    padding: 5px;
+    tab-size: 4;
+    -moz-tab-size: 4; /* Firefox */
+ }
+#controls { margin-bottom: 10px; }
+#canvas-container {
+    width: 50%;
+    padding: 10px;
+    display: flex;
+    /* --- Align items to the top --- */
+    flex-direction: column; /* Stack children vertically */
+    align-items: center; /* Center horizontally */
+    justify-content: flex-start; /* Align to top */
+ }
+/* --- Style for the ball counter --- */
+#ball-counter {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-bottom: 10px; /* Space between counter and canvas */
+    min-height: 1.5em; /* Ensure space even if text is empty initially */
+ }
+#error-log { color: red; margin-top: 5px; font-size: 0.9em; white-space: pre-wrap; }
+canvas { border: 1px solid black; } /* Add border to canvas */ 
