@@ -112,13 +112,30 @@ function loadFileContent(event) {
     const file = event.target.files[0];
     if (!file) {
         logOutput("No file selected.");
+        // Reset the input value even if no file selected, to allow immediate re-selection
+        event.target.value = null;
         return;
     }
+
+    // --- Confirmation Check ---
+    const editor = document.getElementById('code-editor');
+    const currentCode = editor.value.trim();
+
+    if (currentCode !== '') {
+        const proceed = confirm("Loading this file will overwrite the current code in the editor. Are you sure you want to continue?");
+        if (!proceed) {
+            logOutput("File load cancelled by user.");
+            event.target.value = null; // Reset input value
+            return; // Stop execution if user cancels
+        }
+    }
+    // --- End Confirmation Check ---
+
 
     const reader = new FileReader();
     reader.onload = function(e) {
         const content = e.target.result;
-        document.getElementById('code-editor').value = content;
+        editor.value = content; // Use the cached editor element
         logOutput(`File "${file.name}" loaded successfully.`);
         clearError(); // Clear any previous errors when loading new code
     };
