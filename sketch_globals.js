@@ -25,6 +25,13 @@ let builderMode = true;
 let parser; // Initialized in preload
 let procedures = {}; // Initialized in runCode/resetNiki
 
+// --- Execution Control ---
+let commandsPerSecond = 10; // Default speed
+let isExecuting = false;    // Flag to prevent overlaps
+let runButtonElement;       // To disable/enable run button
+
 // HTML Elements (initialized in setup/utils)
 let errorLogElement;
-let ballCounterElement; 
+let ballCounterElement;
+let speedSliderElement;
+let speedLabelElement; 

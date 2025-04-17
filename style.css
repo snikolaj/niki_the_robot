@@ -10,7 +10,14 @@ body { margin: 0; font-family: sans-serif; display: flex; height: 100vh; }
     tab-size: 4;
     -moz-tab-size: 4; /* Firefox */
  }
-#controls { margin-bottom: 10px; }
+#controls {
+    margin-bottom: 10px;
+    /* Make controls flex for alignment */
+    display: flex;
+    flex-wrap: wrap; /* Allow wrapping if space is limited */
+    gap: 15px; /* Add space between control items */
+    align-items: center; /* Align items vertically */
+}
 #canvas-container {
     width: 50%;
     padding: 10px;
@@ -28,4 +35,20 @@ body { margin: 0; font-family: sans-serif; display: flex; height: 100vh; }
     min-height: 1.5em; /* Ensure space even if text is empty initially */
  }
 #error-log { color: red; margin-top: 5px; font-size: 0.9em; white-space: pre-wrap; }
-canvas { border: 1px solid black; } /* Add border to canvas */ 
+canvas { border: 1px solid black; } /* Add border to canvas */
+
+.speed-control {
+    display: flex;
+    align-items: center;
+    gap: 5px; /* Space within speed control */
+}
+
+#speed-slider {
+    width: 100px; /* Adjust width as needed */
+}
+
+#speed-label {
+    font-weight: bold;
+    min-width: 25px; /* Ensure space for 3 digits */
+    text-align: right;
+} 

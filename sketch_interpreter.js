@@ -20,116 +20,146 @@ function loadAndCompileGrammar() {
         });
 }
 
+// Helper function to pause execution based on the slider
+async function pauseExecution() {
+    // Calculate delay in milliseconds. Handle potential division by zero or very high speeds.
+    const delayMs = commandsPerSecond > 0 ? Math.max(0, 1000 / commandsPerSecond) : 1000; // Max 1 sec delay if cps is 0
+    if (delayMs > 5) { // Only pause if the delay is noticeable to avoid overhead
+       await delay(delayMs);
+    }
+     // Check if execution was cancelled (e.g., by Reset button)
+     if (!isExecuting) {
+        throw new Error("Execution cancelled by reset."); // Stop execution
+     }
+}
 
-function runCode() {
+// Make runCode async to handle await
+async function runCode() {
     if (!parser) {
         logError("Parser not ready or failed to load. Cannot run code.");
         return;
     }
+    // Prevent starting a new run if one is already active
+    if (isExecuting) {
+        logOutput("Execution already in progress.");
+        return;
+    }
 
-    const code = document.getElementById('code-editor').value;
-    clearError(); // Clear previous errors
+    isExecuting = true;
+    runButtonElement.disabled = true; // Disable button during run
+    runButtonElement.textContent = "Running...";
+    clearError();
     logOutput("Parsing code...");
 
     try {
+        const code = document.getElementById('code-editor').value;
         const ast = parser.parse(code);
         logOutput("Parsing successful. Executing...");
         procedures = {}; // Reset user-defined procedures
 
-        // First pass: Register procedures defined in the code
+        // First pass: Register procedures
         if (ast.declarations && ast.declarations.length > 0) {
             ast.declarations.forEach(decl => {
                 if (decl.type === 'procedureDeclaration') {
-                    if (NIKI_FUNCTIONS[decl.name]) {
-                         throw new Error(`Cannot redefine built-in function: ${decl.name}`);
-                    }
-                    if (procedures[decl.name]) {
-                         throw new Error(`Procedure already defined: ${decl.name}`);
-                    }
-                    procedures[decl.name] = decl.body; // Store the AST node representing the procedure body
-                     logOutput(`Registered procedure: ${decl.name}`);
+                    if (NIKI_FUNCTIONS[decl.name]) throw new Error(`Cannot redefine built-in function: ${decl.name}`);
+                    if (procedures[decl.name]) throw new Error(`Procedure already defined: ${decl.name}`);
+                    procedures[decl.name] = decl.body;
+                    logOutput(`Registered procedure: ${decl.name}`);
                 }
             });
         }
 
-        // Second pass: Execute the main program block
-        executeASTNode(ast.main);
+        // Second pass: Execute the main program block asynchronously
+        await executeASTNode(ast.main); // Await completion
         logOutput("Execution finished.");
 
     } catch (e) {
-        // Handle both parsing and runtime errors
-        let errorMessage = `Error: ${e.message}`;
-        if (e.location) { // Add location info if it's a parse error
-             errorMessage += `\n  at line ${e.location.start.line}, column ${e.location.start.column}`;
+        // Handle parsing, runtime, or cancellation errors
+        if (e.message !== "Execution cancelled by reset.") { // Don't log cancellation as an error
+            let errorMessage = `Error: ${e.message}`;
+            if (e.location) { // Add location info for parse errors
+                errorMessage += `\n  at line ${e.location.start.line}, column ${e.location.start.column}`;
+            }
+            logError(errorMessage);
+            console.error("Execution/Parsing Error:", e);
+        } else {
+             logOutput("Execution stopped by reset.");
         }
-        logError(errorMessage);
-        console.error("Execution/Parsing Error:", e); // Log full error object
+    } finally {
+        // This block runs whether execution succeeded, failed, or was cancelled
+        isExecuting = false;
+        runButtonElement.disabled = false; // Re-enable button
+        runButtonElement.textContent = "Run Code";
+         logOutput("Execution ended or was stopped."); // Log end state
     }
 }
 
 // --- AST Interpreter ---
-function executeASTNode(node) {
-    if (!node) return; // Handle cases like missing else branches
+// Make executeASTNode async
+async function executeASTNode(node) {
+    if (!isExecuting || !node) return; // Stop if cancelled or node is null
 
     switch (node.type) {
         case 'block':
-            // Execute each statement in the block sequentially
-            node.statements.forEach(stmt => executeASTNode(stmt));
+            // Use for...of for async iteration compatibility
+            for (const stmt of node.statements) {
+                 if (!isExecuting) break; // Check cancellation before each statement
+                await executeASTNode(stmt); // Await each statement in the block
+            }
             break;
 
         case 'procedureCall':
             const procName = node.name;
             if (NIKI_FUNCTIONS[procName]) {
-                // Execute a built-in Niki function
-                NIKI_FUNCTIONS[procName]();
+                NIKI_FUNCTIONS[procName](); // Built-in functions are quick state changes
+                await pauseExecution();     // Pause AFTER the built-in command executes
             } else if (procedures[procName]) {
-                // Execute a user-defined procedure by executing its stored AST body
-                 logOutput(`Executing user procedure: ${procName}`);
-                executeASTNode(procedures[procName]);
+                logOutput(`Executing user procedure: ${procName}`);
+                await executeASTNode(procedures[procName]); // Await the procedure's execution
+                // No extra pause needed here, pauses happen inside the procedure's statements
             } else {
                 throw new Error(`Undefined procedure called: ${procName}`);
             }
             break;
 
         case 'ifStatement':
-             logOutput("Evaluating IF condition...");
-            const conditionMet = evaluateExpression(node.condition);
-             logOutput(`IF Condition (${node.condition.name || 'complex'}): ${conditionMet}`);
+            logOutput("Evaluating IF condition...");
+            const conditionMet = evaluateExpression(node.condition); // Evaluation is synchronous
+            logOutput(`IF Condition (${node.condition.name || 'complex'}): ${conditionMet}`);
             if (conditionMet) {
-                 logOutput("Executing THEN branch.");
-                executeASTNode(node.thenBranch);
+                logOutput("Executing THEN branch.");
+                await executeASTNode(node.thenBranch); // Await the branch
             } else if (node.elseBranch) {
-                 logOutput("Executing ELSE branch.");
-                executeASTNode(node.elseBranch);
+                logOutput("Executing ELSE branch.");
+                await executeASTNode(node.elseBranch); // Await the branch
             } else {
-                 logOutput("IF condition FALSE, no ELSE branch.");
+                logOutput("IF condition FALSE, no ELSE branch.");
+                 await pauseExecution(); // Pause even if no branch taken? Optional. For now, no.
             }
             break;
 
         case 'repeatStatement':
             let loopCount = 0;
-            const maxLoops = 1000; // Safety break for infinite loops
-             logOutput("Entering REPEAT loop...");
+            const maxLoops = 1000;
+            logOutput("Entering REPEAT loop...");
             do {
-                executeASTNode(node.body); // Execute the loop body
+                 if (!isExecuting) break; // Check cancellation at start of loop
+                await executeASTNode(node.body); // Await the loop body's execution
                 loopCount++;
-                if (loopCount > maxLoops) {
-                    throw new Error(`Maximum loop iterations (${maxLoops}) exceeded in REPEAT statement. Possible infinite loop.`);
-                }
-                 // Evaluate the UNTIL condition AFTER executing the body
-                 const untilConditionMet = evaluateExpression(node.condition);
-                 logOutput(`Loop condition check (iteration ${loopCount}): UNTIL ${node.condition.name || 'complex'} is ${untilConditionMet}`);
-                 if (untilConditionMet) {
-                    break; // Exit loop if condition is true
-                 }
-            } while (true); // Condition checked inside the loop
-             logOutput("Exiting REPEAT loop.");
+                if (loopCount > maxLoops) throw new Error(`Max loop iterations (${maxLoops}) exceeded.`);
+
+                 if (!isExecuting) break; // Check cancellation before condition eval
+                const untilConditionMet = evaluateExpression(node.condition); // Condition eval is sync
+                logOutput(`Loop condition check (iteration ${loopCount}): UNTIL ${node.condition.name || 'complex'} is ${untilConditionMet}`);
+                 if (untilConditionMet) break; // Exit loop if condition is true
+
+                 await pauseExecution(); // Pause at the end of each loop iteration AFTER check
+            } while (true);
+            logOutput("Exiting REPEAT loop.");
             break;
 
         default:
-            // This case handles node types like 'program' or 'procedureDeclaration'
-            // which don't have direct execution logic here (handled elsewhere)
-            console.warn(`Interpreter encountered unhandled AST node type during execution: ${node.type}`);
+            console.warn(`Interpreter encountered unhandled AST node type: ${node.type}`);
     }
 }
 

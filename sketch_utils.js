@@ -55,4 +55,21 @@ function handleTabInTextarea(editorElement) {
             this.selectionStart = this.selectionEnd = start + tabChar.length;
         }
     });
+}
+
+// --- New utility functions ---
+
+// Creates a pause using Promises
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Updates the speed label text
+function updateSpeedLabel() {
+    if (!speedLabelElement) {
+        speedLabelElement = document.getElementById('speed-label');
+    }
+    if(speedLabelElement) {
+        speedLabelElement.textContent = commandsPerSecond;
+    }
 } 

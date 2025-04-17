@@ -60,22 +60,42 @@ function drawGridBase() {
 
 // Draws items on the grid (balls) that should appear over Niki
 function drawGridItems() {
+     const numBallsPerRow = 3; // Target number of balls per row
+     const ballSize = 6;      // Diameter of each ball
+
      for (let i = 0; i < ARR_COLS; i++) {
         for (let j = 0; j < ARR_ROWS; j++) {
-             // Draw balls
-            if (grid[i][j].numOfBalls > 0) {
+             const totalBallsInSquare = grid[i][j].numOfBalls;
+            if (totalBallsInSquare > 0) {
                 fill(0, 0, 255); // Blue balls
                 noStroke();
-                const ballSize = 6;
-                const padding = 4;
-                const maxBallsPerRow = Math.floor((RECT_WIDTH - 2 * padding) / (ballSize + padding));
 
-                for(let n = 0; n < grid[i][j].numOfBalls; n++){
-                    const ballCol = n % maxBallsPerRow;
-                    const ballRow = Math.floor(n / maxBallsPerRow);
-                    const x = i * RECT_WIDTH + padding + ballCol * (ballSize + padding) + ballSize/2;
-                    const y = j * RECT_HEIGHT + padding + ballRow * (ballSize + padding) + ballSize/2;
-                    circle(x, y, ballSize);
+                // --- Calculate Spacing ---
+
+                // Horizontal spacing: Calculate the gap needed between balls and edges
+                // Total space occupied by balls = numBallsPerRow * ballSize
+                // Total space available for gaps = RECT_WIDTH - (numBallsPerRow * ballSize)
+                // Number of gaps = numBallsPerRow + 1 (edges + between balls)
+                const gapSizeX = (RECT_WIDTH - numBallsPerRow * ballSize) / (numBallsPerRow + 1);
+
+                // Calculate number of rows needed based on total balls and balls per row
+                const numRowsOfBalls = Math.ceil(totalBallsInSquare / numBallsPerRow);
+
+                // Vertical spacing: Calculate similarly using the number of rows
+                const gapSizeY = (RECT_HEIGHT - numRowsOfBalls * ballSize) / (numRowsOfBalls + 1);
+
+                // --- Draw Balls ---
+                for(let n = 0; n < totalBallsInSquare; n++){
+                    const ballCol = n % numBallsPerRow; // Column index (0, 1, or 2)
+                    const ballRow = Math.floor(n / numBallsPerRow); // Row index (0, 1, ...)
+
+                    // Calculate center X: start of square + initial gap + (ball index * (ball + gap)) + half ball size
+                    const centerX = (i * RECT_WIDTH) + gapSizeX + ballCol * (ballSize + gapSizeX) + (ballSize / 2);
+
+                    // Calculate center Y: similarly for vertical position
+                    const centerY = (j * RECT_HEIGHT) + gapSizeY + ballRow * (ballSize + gapSizeY) + (ballSize / 2);
+
+                    circle(centerX, centerY, ballSize); // Draw the ball centered
                 }
                  stroke(0); // Reset stroke just in case
             }

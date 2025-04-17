@@ -118,21 +118,28 @@ const NIKI_FUNCTIONS = {
 
 function drawNiki() {
     let img;
+    // Assign the correct image based on direction
     switch (nikiDirection % 4) {
-        case 0: img = nikiUp; break;
-        case 1: img = nikiRight; break;
-        case 2: img = nikiDown; break;
-        case 3: img = nikiLeft; break;
+        case 0: img = nikiUp; break;    // North
+        case 1: img = nikiRight; break; // East
+        case 2: img = nikiDown; break;   // South
+        case 3: img = nikiLeft; break;  // West
     }
-     if (img && nikiCol >= 0 && nikiCol < ARR_COLS && nikiRow >= 0 && nikiRow < ARR_ROWS) {
-        image(img, nikiCol * RECT_WIDTH, nikiRow * RECT_HEIGHT, RECT_WIDTH, RECT_HEIGHT);
 
-        // Draw ball count ON Niki
-        fill(0);
-        noStroke(); // Ensure text isn't stroked
-        textSize(10);
-        textAlign(CENTER, CENTER);
-        text(nikiNumOfBalls, nikiCol * RECT_WIDTH + RECT_WIDTH / 2, nikiRow * RECT_HEIGHT + RECT_HEIGHT / 2);
-         stroke(0); // Reset stroke
+    // Check if Niki is within the grid bounds before drawing anything
+    if (nikiCol >= 0 && nikiCol < ARR_COLS && nikiRow >= 0 && nikiRow < ARR_ROWS) {
+
+        // 1. Attempt to draw the Niki image if it exists and is loaded
+        if (img) {
+            image(img, nikiCol * RECT_WIDTH, nikiRow * RECT_HEIGHT, RECT_WIDTH, RECT_HEIGHT);
+        } else {
+            // Log a warning if an image is missing for the current direction
+            console.warn(`Niki image for direction ${nikiDirection % 4} is missing or invalid.`);
+            // Optional: Draw a placeholder if image is missing
+            fill(128); // Gray placeholder
+            noStroke();
+            rect(nikiCol * RECT_WIDTH, nikiRow * RECT_HEIGHT, RECT_WIDTH, RECT_HEIGHT);
+            stroke(0); // Reset stroke
+        }
     }
 } 
