@@ -1,5 +1,10 @@
 // --- Main p5.js Sketch File ---
 
+// Add global variables for the new elements
+let saveButtonElement;
+let loadButtonElement;
+let loadFileInputElement;
+
 function preload() {
     logOutput("Preloading assets...");
     // Load Niki images
@@ -26,6 +31,9 @@ function setup() {
     errorLogElement = document.getElementById('error-log'); // Initialize here
     ballCounterElement = document.getElementById('ball-counter'); // Initialize here
     speedLabelElement = document.getElementById('speed-label'); // Initialize here
+    saveButtonElement = document.getElementById('save-button'); // Cache save button
+    loadButtonElement = document.getElementById('load-button'); // Cache load button
+    loadFileInputElement = document.getElementById('load-file-input'); // Cache file input
 
 
     // --- Event Listeners ---
@@ -33,6 +41,9 @@ function setup() {
     runButtonElement.addEventListener('click', runCode); // runCode is now async
     document.getElementById('reset-button').addEventListener('click', resetNiki);
     document.getElementById('builder-mode-checkbox').addEventListener('change', handleBuilderModeToggle);
+    saveButtonElement.addEventListener('click', saveCodeToFile); // Add listener for save
+    loadButtonElement.addEventListener('click', () => loadFileInputElement.click()); // Trigger file input on load click
+    loadFileInputElement.addEventListener('change', loadFileContent); // Add listener for file selection
     handleTabInTextarea(editor);
     canvas.mousePressed(builderMousePressed);
     canvas.mouseClicked(builderMouseClicked);
@@ -79,4 +90,45 @@ function resetNiki() {
     clearError();
     updateBallCounterDisplay();
     logOutput("Reset complete.");
-} 
+}
+
+// --- Save and Load Functions ---
+
+function saveCodeToFile() {
+    const codeToSave = document.getElementById('code-editor').value;
+    const blob = new Blob([codeToSave], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'niki_code.pas'; // Default filename
+    document.body.appendChild(link); // Required for Firefox
+    link.click();
+    document.body.removeChild(link); // Clean up
+    URL.revokeObjectURL(url); // Release object URL
+    logOutput("Code saved to niki_code.pas");
+}
+
+function loadFileContent(event) {
+    const file = event.target.files[0];
+    if (!file) {
+        logOutput("No file selected.");
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const content = e.target.result;
+        document.getElementById('code-editor').value = content;
+        logOutput(`File "${file.name}" loaded successfully.`);
+        clearError(); // Clear any previous errors when loading new code
+    };
+    reader.onerror = function(e) {
+        logError(`Error reading file "${file.name}": ${e.target.error}`);
+        console.error("File reading error:", e.target.error);
+    };
+    reader.readAsText(file);
+
+    // Reset the input value to allow loading the same file again
+    event.target.value = null;
+}
+// --- End Save and Load Functions --- 
