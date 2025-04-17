@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Niki the Robot</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/peggy@3.0.2/browser/peggy.min.js"></script> <!-- Use Peggy browser version -->
+    <style>
+        body { margin: 0; font-family: sans-serif; display: flex; height: 100vh; }
+        #editor-container { width: 50%; padding: 10px; display: flex; flex-direction: column; border-right: 1px solid #ccc; }
+        #code-editor { flex-grow: 1; font-family: monospace; font-size: 14px; border: 1px solid #ccc; margin-bottom: 10px; padding: 5px; }
+        #controls { margin-bottom: 10px; }
+        #canvas-container { width: 50%; padding: 10px; display: flex; justify-content: center; align-items: center; }
+        #error-log { color: red; margin-top: 5px; font-size: 0.9em; white-space: pre-wrap; }
+        canvas { border: 1px solid black; } /* Add border to canvas */
+    </style>
+</head>
+<body>
+    <div id="editor-container">
+        <h3>Niki Pascal Code</h3>
+        <textarea id="code-editor">
+program example;
+
+{ --- Basic Movement --- }
+procedure turn_right;
+begin
+    drehe_links;
+    drehe_links;
+    drehe_links
+end;
+
+procedure turn_around;
+begin
+    drehe_links;
+    drehe_links
+end;
+
+{ --- Main Program Logic --- }
+begin
+    { Example: Move forward if clear, otherwise turn left }
+    if vorne_frei then
+    begin
+        vor
+    end
+    else
+    begin
+        drehe_links
+    end;
+
+    { Example: Drop a ball if Niki has one }
+    if hat_Vorrat then
+    begin
+        gib_ab
+    end;
+
+    { Example: Keep moving forward until wall }
+    repeat
+        vor
+    until not vorne_frei
+
+end.
+        </textarea>
+        <div id="controls">
+            <button id="run-button">Run Code</button>
+            <button id="reset-button">Reset Niki</button>
+            <label style="margin-left: 15px;">
+                <input type="checkbox" id="builder-mode-checkbox" checked> Builder Mode
+            </label>
+        </div>
+        <div id="error-log"></div>
+    </div>
+    <div id="canvas-container">
+        <!-- p5.js canvas will be created here -->
+    </div>
+
+    <script src="sketch.js"></script>
+</body>
+</html> 

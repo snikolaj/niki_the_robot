@@ -1,65 +1,92 @@
-// start by matching only functions - this is where everything starts
-// don't care about whether a function is main or not, that's for the step following
+// Niki Pascal Grammar for Peggy.js
+
+{
+  // Helper function to create statement blocks
+  function makeBlock(stmts) {
+    return { type: "block", statements: stmts || [] };
+  }
+}
+
 start
-  = stmts:functionDeclaration* { return stmts; }
+  = _ program:program _ { return program; }
 
-// in C-style syntax, if-statements, function declarations, while/do-while statements all look very similar
-functionDeclaration
-  = _ "function" __ name:word _ "(" _ ")" _ "{" _ body:statements _ "}" _
-  { return { type: "functionDeclaration", name, body }; }
+program
+  = "program" __ name:identifier _ ";" _ decls:declarations main:compound_statement "." _
+  { return { type: "program", name: name.name, declarations: decls, main: main }; }
 
-// will be matched sequentially, so if-else shouldn't ever be interpreted as if
-statements
-  = stmts:(ifElseStatement / ifStatement / doWhileStatement / whileStatement / functionCall)* { return stmts; }
+declarations
+  = procs:(procedure_declaration*) { return procs; }
 
-ifStatement
-  = _ "if" _ "(" _ condition:expression _ ")" _ "{" _ body:statements _ "}" 
-  { return { type: "ifStatement", condition, body }; }
+procedure_declaration
+  = "procedure" __ name:identifier _ ";" _ body:compound_statement ";" _
+  { return { type: "procedureDeclaration", name: name.name, body: body }; }
 
-ifElseStatement
-  = _ "if" _ "(" _ condition:expression _ ")" _ "{" _ body:statements _ "}" 
-  _ "else" _ "{" _ elseStatement:statements _ "}"
-  { return { type: "ifElseStatement", condition, body, elseStatement }; }
+compound_statement
+  = "begin" _ statements:statement_sequence _ "end"
+  { return makeBlock(statements); }
 
-doWhileStatement
-  = _ "do" _ "{" _ body:statements _ "}" _ "while" _ "(" _ condition:expression _ ")" _ ";"
-  { return { type: "doWhileStatement", condition, body }; }
+// The key change: handling statement sequence with proper termination
+statement_sequence
+  = first:statement rest:(statement_terminator statement)* statement_terminator? {
+      const statements = [first];
+      rest.forEach(item => statements.push(item[1]));
+      return statements;
+    }
+  / "" { return []; } // Allow empty blocks
 
-whileStatement
-  = _ "while" _ "(" _ condition:expression _ ")" _ "{" _ body:statements _ "}" 
-  { return { type: "whileStatement", condition, body }; }
+// Semicolon is the statement terminator
+statement_terminator
+  = _ ";" _
 
-// for now only allow the keyword "not" to denote a negation of an identifier
-// TODO: find proper terminology
+statement
+  = procedure_call
+  / if_statement
+  / repeat_statement
+  / compound_statement
+
+procedure_call
+  = name:identifier { return { type: "procedureCall", name: name.name }; }
+
+if_statement
+  = "if" __ condition:expression __ "then" _ then_branch:statement else_part:else_part? {
+      return {
+        type: "ifStatement",
+        condition: condition,
+        thenBranch: then_branch,
+        elseBranch: else_part
+      };
+    }
+
+else_part
+  = _ "else" _ statement:statement { return statement; }
+
+repeat_statement
+  = "repeat" _ body:statement_sequence _ "until" __ condition:expression
+  { return { type: "repeatStatement", body: makeBlock(body), condition: condition }; }
+
 expression
-  = negatedIdentifier / identifier
+  = negated_expression
+  / identifier
 
-// match all words with numbers and underscores that aren't expressions or reserved names
-// at the end of reserved names, make sure they aren't beginnings of other words
-// so that statements like if_there_is_ball do not get falsely misinterpreted
-word
-  = !(expression ![a-zA-Z0-9_] / reserved_names ![a-zA-Z0-9_]) chars:[a-zA-Z0-9_]+ { return chars.join('') }
+negated_expression
+  = "not" __ expr:expression { return { type: "negatedExpression", expression: expr }; }
 
-negatedIdentifier
-  = _ "not" __ ident:identifier { return { type: "negatedExpression", ident } }
-  
-functionCall
-  = _ name:word _ "(" _ ")" _ ";" { return { type: 'functionCall', name }; }
+// --- Lexical Elements ---
 
-// original German identifiers, later add English
-identifier
-  = chars:("nordwaerts" / "ostwaerts" / "suedwaerts" / "ostwaerts" / 
-  "vorne_frei" / "links_frei" / "rechts_frei" /
-  "platz_belegt" / "hat_Vorrat") { return { type: "identifier", identifier:chars } }
+// Allow built-in Niki functions and user-defined procedure names
+identifier "identifier"
+  = !keyword name:$( [a-zA-Z_][a-zA-Z0-9_]* ) { return { type: "identifier", name: name }; }
 
-// these should never be function names
-reserved_names
-  = "function" / "if" / "do" / "for" / "while" / "else"
+// Keywords that cannot be identifiers
+keyword
+  = ("program" / "procedure" / "begin" / "end" / "if" / "then" / "else" / "repeat" / "until" / "not") ![a-zA-Z0-9_]
 
-// optional whitespace
-_  = [ \t\r\n]*
+// Whitespace and Comments
+_ "whitespace"
+  = (whitespace / comment)*
 
-// mandatory whitespace
-__ = [ \t\r\n]+
+__ "mandatory whitespace"
+  = (whitespace / comment)+
 
-// note to self - don't forget to include optional whitespace before statements, or they will not work
+whitespace = [ \t\r\n]+
+comment = "{" [^}]* "}"
