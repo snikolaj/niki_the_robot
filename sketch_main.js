@@ -53,6 +53,25 @@ function setup() {
         commandsPerSecond = parseInt(e.target.value, 10);
         updateSpeedLabel();
     });
+
+    // --- Before Unload Listener ---
+    window.addEventListener('beforeunload', (event) => {
+        const codeEditor = document.getElementById('code-editor');
+        // Check if the editor has non-whitespace content
+        if (codeEditor && codeEditor.value.trim() !== '') {
+            console.log("Beforeunload listener: Unsaved changes detected.");
+            const confirmationMessage = 'You have unsaved code. Are you sure you want to leave?';
+            // Standard way to trigger the browser's confirmation dialog
+            event.preventDefault();
+            // Required for modern browsers and compatibility
+            event.returnValue = confirmationMessage;
+            // Explicitly return the message for older browsers/potential quirks
+            return confirmationMessage;
+        }
+        // If the editor is empty, the event proceeds normally without a prompt
+    });
+    // --- End Before Unload Listener ---
+
     // --- End Event Listeners ---
 
     // Initialize state and display
