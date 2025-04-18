@@ -32,6 +32,7 @@ function builderMousePressed() {
         }
         wallInteracted = true;
         logOutput(`Wall interaction at top edge of (${col}, ${row})`);
+        isGridSaved = false;
     }
     // Bottom wall
     else if (yInRect > RECT_HEIGHT - borderZone && row < ARR_ROWS - 1) {
@@ -44,6 +45,7 @@ function builderMousePressed() {
         }
         wallInteracted = true;
          logOutput(`Wall interaction at bottom edge of (${col}, ${row})`);
+         isGridSaved = false;
     }
     // Left wall
     else if (xInRect < borderZone && col > 0) {
@@ -56,6 +58,7 @@ function builderMousePressed() {
         }
         wallInteracted = true;
          logOutput(`Wall interaction at left edge of (${col}, ${row})`);
+         isGridSaved = false;
     }
     // Right wall
     else if (xInRect > RECT_WIDTH - borderZone && col < ARR_COLS - 1) {
@@ -68,18 +71,25 @@ function builderMousePressed() {
         }
         wallInteracted = true;
          logOutput(`Wall interaction at right edge of (${col}, ${row})`);
+         isGridSaved = false;
     }
 
     // Ball interaction (center clicks)
     if (!wallInteracted) {
+        let ballChanged = false; // Track if a ball change occurred
         if (mouseButton === LEFT) {
             grid[col][row].numOfBalls++;
             logOutput(`Added ball at (${col}, ${row}). Total: ${grid[col][row].numOfBalls}`);
+            ballChanged = true;
         } else if (mouseButton === RIGHT) {
             if (grid[col][row].numOfBalls > 0) {
                 grid[col][row].numOfBalls--;
                 logOutput(`Removed ball at (${col}, ${row}). Total: ${grid[col][row].numOfBalls}`);
+                ballChanged = true;
             }
+        }
+        if (ballChanged) {
+            isGridSaved = false;
         }
     }
 }
@@ -97,5 +107,6 @@ function builderMouseClicked() {
          nikiCol = col;
          nikiRow = row;
          logOutput(`Niki placed at (${col}, ${row})`);
+         isGridSaved = false;
     }
 } 

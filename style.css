@@ -210,7 +210,7 @@ canvas {
     }
 }
 
-{{ Add styling for the select dropdown }}
+/* Styling for the select dropdown */
 #controls select {
     padding: 7px 10px; /* Adjust padding to match buttons */
     border: 1px solid #ccc;
@@ -223,4 +223,21 @@ canvas {
 }
 #controls select:hover {
     border-color: #aaa;
+}
+
+/* Styles for Save/Load Grid buttons */
+#save-grid-button {
+    background-color: #17a2b8; /* Teal */
+    color: white;
+}
+#save-grid-button:hover {
+    background-color: #117a8b; /* Darker Teal */
+}
+
+#load-grid-button {
+    background-color: #6f42c1; /* Indigo */
+    color: white;
+}
+#load-grid-button:hover {
+    background-color: #5a32a3; /* Darker Indigo */
 } 

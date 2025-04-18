@@ -5,7 +5,11 @@ let saveButtonElement;
 let loadButtonElement;
 let loadFileInputElement;
 let exampleSelectElement;
+let saveGridButtonElement;
+let loadGridButtonElement;
+let loadGridInputElement;
 let isCodeSaved = false;
+let isGridSaved = true; // Track grid changes
 
 function preload() {
     logOutput("Preloading assets...");
@@ -37,6 +41,9 @@ function setup() {
     loadButtonElement = document.getElementById('load-button'); // Cache load button
     loadFileInputElement = document.getElementById('load-file-input'); // Cache file input
     exampleSelectElement = document.getElementById('example-select'); // Cache example select
+    saveGridButtonElement = document.getElementById('save-grid-button');
+    loadGridButtonElement = document.getElementById('load-grid-button');
+    loadGridInputElement = document.getElementById('load-grid-input');
 
 
     // --- Event Listeners ---
@@ -48,6 +55,9 @@ function setup() {
     loadButtonElement.addEventListener('click', () => loadFileInputElement.click()); // Trigger file input on load click
     loadFileInputElement.addEventListener('change', loadFileContent); // Add listener for file selection
     exampleSelectElement.addEventListener('change', loadSelectedExample); // Add listener for example select
+    saveGridButtonElement.addEventListener('click', saveGridToFile);
+    loadGridButtonElement.addEventListener('click', () => loadGridInputElement.click());
+    loadGridInputElement.addEventListener('change', loadGridFromFile);
     handleTabInTextarea(editor);
     canvas.mousePressed(builderMousePressed);
     canvas.mouseClicked(builderMouseClicked);
@@ -70,6 +80,13 @@ function setup() {
         if (!isCodeSaved) {
             console.log("Beforeunload listener: Unsaved changes detected.");
             const confirmationMessage = 'You have unsaved code. Are you sure you want to leave?';
+            event.preventDefault();
+            event.returnValue = confirmationMessage;
+            return confirmationMessage;
+        }
+        if (!isGridSaved) {
+            console.log("Beforeunload listener: Unsaved grid changes detected.");
+            const confirmationMessage = 'You have unsaved grid changes. Are you sure you want to leave?';
             event.preventDefault();
             event.returnValue = confirmationMessage;
             return confirmationMessage;
@@ -115,6 +132,7 @@ function resetNiki() {
     clearError();
     updateBallCounterDisplay();
     isCodeSaved = false;
+    isGridSaved = true;
     logOutput("Reset complete.");
 }
 
@@ -167,6 +185,137 @@ function loadFileContent(event) {
     reader.readAsText(file);
 
     event.target.value = null;
+}
+
+function saveGridToFile() {
+    const gridData = {
+        dimensions: { cols: ARR_COLS, rows: ARR_ROWS },
+        niki: {
+            col: nikiCol,
+            row: nikiRow,
+            direction: nikiDirection,
+            balls: nikiNumOfBalls
+        },
+        squares: []
+    };
+
+    for (let i = 0; i < ARR_COLS; i++) {
+        for (let j = 0; j < ARR_ROWS; j++) {
+            const square = grid[i][j];
+            const hasData = square.numOfBalls > 0 || square.topWall || square.rightWall || square.bottomWall || square.leftWall;
+
+            if (hasData) {
+                const squareData = { col: i, row: j };
+                if (square.numOfBalls > 0) squareData.balls = square.numOfBalls;
+                if (square.topWall) squareData.top = true;
+                if (square.rightWall) squareData.right = true;
+                if (square.bottomWall) squareData.bottom = true;
+                if (square.leftWall) squareData.left = true;
+                gridData.squares.push(squareData);
+            }
+        }
+    }
+
+    const jsonString = JSON.stringify(gridData, null, 2); // Pretty print JSON
+    const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'niki_grid.json'; // Default filename
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    logOutput("Grid saved to niki_grid.json");
+    isGridSaved = true; // Mark grid as saved
+}
+
+function loadGridFromFile(event) {
+    const file = event.target.files[0];
+    if (!file) {
+        logOutput("No grid file selected.");
+        event.target.value = null;
+        return;
+    }
+
+    if (!isGridSaved) {
+        const proceed = confirm("Loading this grid will overwrite unsaved changes. Are you sure you want to continue?");
+        if (!proceed) {
+            logOutput("Grid load cancelled by user.");
+            event.target.value = null;
+            return;
+        }
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const gridData = JSON.parse(e.target.result);
+
+            // --- Validation ---
+            if (!gridData || typeof gridData !== 'object') throw new Error("Invalid JSON structure.");
+            if (!gridData.dimensions || gridData.dimensions.cols !== ARR_COLS || gridData.dimensions.rows !== ARR_ROWS) {
+                throw new Error(`Grid dimensions in file (${gridData.dimensions?.cols}x${gridData.dimensions?.rows}) do not match current setup (${ARR_COLS}x${ARR_ROWS}).`);
+            }
+            if (!gridData.niki || typeof gridData.niki !== 'object') throw new Error("Missing or invalid Niki data.");
+            if (!Array.isArray(gridData.squares)) throw new Error("Missing or invalid squares data.");
+
+            // --- Reset and Apply ---
+            createGrid(); // Reset grid to default empty state
+
+            // Restore Niki state
+            nikiCol = gridData.niki.col ?? Math.floor(ARR_COLS / 2);
+            nikiRow = gridData.niki.row ?? Math.floor(ARR_ROWS / 2);
+            nikiDirection = gridData.niki.direction ?? (1 << 30); // Default UP
+            nikiNumOfBalls = gridData.niki.balls ?? 0;
+            updateBallCounterDisplay();
+
+            // Apply square data
+            gridData.squares.forEach(squareData => {
+                const { col, row, balls, top, right, bottom, left } = squareData;
+                if (col >= 0 && col < ARR_COLS && row >= 0 && row < ARR_ROWS) {
+                    const square = grid[col][row];
+                    square.numOfBalls = balls || 0;
+
+                    // Set walls, ensuring consistency with neighbors
+                    if (top) {
+                        square.topWall = true;
+                        if (row > 0) grid[col][row - 1].bottomWall = true;
+                    }
+                    if (bottom) {
+                        square.bottomWall = true;
+                        if (row < ARR_ROWS - 1) grid[col][row + 1].topWall = true;
+                    }
+                    if (left) {
+                        square.leftWall = true;
+                        if (col > 0) grid[col - 1][row].rightWall = true;
+                    }
+                    if (right) {
+                        square.rightWall = true;
+                        if (col < ARR_COLS - 1) grid[col + 1][row].leftWall = true;
+                    }
+                } else {
+                    console.warn(`Skipping square data outside grid bounds: col=${col}, row=${row}`);
+                }
+            });
+
+            logOutput(`Grid "${file.name}" loaded successfully.`);
+            isGridSaved = true; // Loaded grid is considered 'saved' initially
+            clearError();
+
+        } catch (error) {
+            logError(`Error loading grid file "${file.name}": ${error.message}`);
+            console.error("Grid loading error:", error);
+        } finally {
+             event.target.value = null; // Clear the input regardless of success/failure
+        }
+    };
+    reader.onerror = function(e) {
+        logError(`Error reading grid file "${file.name}": ${e.target.error}`);
+        console.error("File reading error:", e.target.error);
+         event.target.value = null; // Clear the input on error too
+    };
+    reader.readAsText(file);
 }
 // --- End Save and Load Functions ---
 

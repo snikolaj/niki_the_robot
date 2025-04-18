@@ -52,6 +52,7 @@ const NIKI_FUNCTIONS = {
                  nikiNumOfBalls--;
                  updateBallCounterDisplay();
                  logOutput("Niki dropped a ball.");
+                 isGridSaved = false;
              } else {
                  throw new Error("Niki is outside the grid!"); // Should ideally not happen
              }
@@ -66,6 +67,7 @@ const NIKI_FUNCTIONS = {
                  nikiNumOfBalls++;
                  updateBallCounterDisplay();
                  logOutput("Niki picked up a ball.");
+                 isGridSaved = false;
             } else {
                  throw new Error("No ball to pick up here!");
             }
