@@ -69,12 +69,33 @@ while_statement
   = "while"i __ condition:expression __ "do"i _ body:statement
   { return { type: "whileStatement", condition: condition, body: body }; }
 
-expression
-  = negated_expression
-  / identifier
+// --- Expression Parsing with Precedence ---
 
-negated_expression
-  = "not"i __ expr:expression { return { type: "negatedExpression", expression: expr }; }
+// Expression: Lowest precedence (OR)
+expression
+  = left:and_expression rest:( _ "or"i __ right:and_expression )* {
+      return rest.reduce((acc, element) => {
+        return { type: "binaryExpression", operator: "or", left: acc, right: element[3] };
+      }, left);
+    }
+
+// AND Expression: Middle precedence
+and_expression
+  = left:not_expression rest:( _ "and"i __ right:not_expression )* {
+      return rest.reduce((acc, element) => {
+        return { type: "binaryExpression", operator: "and", left: acc, right: element[3] };
+      }, left);
+    }
+
+// NOT Expression: Highest precedence (Unary)
+not_expression
+  = "not"i __ expr:primary_expression { return { type: "negatedExpression", expression: expr }; }
+  / primary_expression
+
+// Primary Expression: Atoms and Grouping
+primary_expression
+  = identifier
+  / "(" _ expr:expression _ ")" { return expr; } // Parentheses for grouping
 
 // --- Lexical Elements ---
 
@@ -84,7 +105,7 @@ identifier "identifier"
 
 // Keywords that cannot be identifiers
 keyword
-  = ("program"i / "procedure"i / "begin"i / "end"i / "if"i / "then"i / "else"i / "repeat"i / "until"i / "not"i / "while"i / "do"i) ![a-zA-Z0-9_]
+  = ("program"i / "procedure"i / "begin"i / "end"i / "if"i / "then"i / "else"i / "repeat"i / "until"i / "not"i / "while"i / "do"i / "and"i / "or"i) ![a-zA-Z0-9_]
 
 // Whitespace and Comments
 _ "whitespace"

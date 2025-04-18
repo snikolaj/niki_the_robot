@@ -202,17 +202,15 @@ function evaluateExpression(node) {
 
             // Check if it's a Niki condition function
             if (NIKI_FUNCTIONS[funcNameLower] && typeof NIKI_FUNCTIONS[funcNameLower] === 'function') {
-                // Check arity or type if necessary - here assume conditions take no args and return boolean
-                // We might want to add a check later to ensure it *is* a condition function
                 const result = NIKI_FUNCTIONS[funcNameLower]();
-                // logOutput(`Evaluated condition '${originalFuncName}': ${result}`); // Verbose log with original name
+                // logOutput(`Evaluated condition '${originalFuncName}': ${result}`); // Verbose
                 return result;
             } else {
-                 // Check if it's a defined procedure (which cannot be used as a condition)
+                 // Check if it's a defined procedure (cannot be used as condition)
                  if (procedures[funcNameLower]){
                      throw new Error(`Procedure '${originalFuncName}' cannot be used as a condition.`);
                  } else {
-                     // Otherwise, it's an undefined identifier used as a condition
+                     // Undefined identifier used as condition
                      throw new Error(`Cannot evaluate identifier as condition: '${originalFuncName}'. Is it a defined Niki condition function?`);
                  }
             }
@@ -220,8 +218,22 @@ function evaluateExpression(node) {
         case 'negatedExpression':
             // Evaluate the inner expression and return the opposite boolean value
             const innerResult = evaluateExpression(node.expression);
-            // logOutput(`Evaluated NOT expression: !(${node.expression?.name || 'complex'}) -> !${innerResult} -> ${!innerResult}`); // Verbose
+             // logOutput(`Evaluated NOT expression: !(${node.expression?.name || 'complex'}) -> !${innerResult} -> ${!innerResult}`); // Verbose
             return !innerResult;
+
+        // Add case for binary expressions (AND, OR)
+        case 'binaryExpression':
+            const leftResult = evaluateExpression(node.left);
+            // Short-circuit evaluation for performance and correctness
+            if (node.operator === 'and') {
+                if (!leftResult) return false; // If left is false, AND is false
+                return evaluateExpression(node.right); // Only evaluate right if left is true
+            } else if (node.operator === 'or') {
+                if (leftResult) return true; // If left is true, OR is true
+                return evaluateExpression(node.right); // Only evaluate right if left is false
+            } else {
+                 throw new Error(`Unsupported binary operator: ${node.operator}`);
+            }
 
         default:
             // Handle unexpected node types in an expression context
