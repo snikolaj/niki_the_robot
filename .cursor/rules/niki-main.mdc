@@ -1,0 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Project description
+This is a project written in HTML and JavaScript with the Peggy.js library. It's meant to be a recreation of the German educational coding game Niki the Robot (Niki der Roboter). The goal of the game is to write a simplified dialect of Pascal in order to allow the in-game character Niki to traverse through a maze. The project uses a simplified set of predefined functions and conditions to accomplish this.
+

@@ -35,6 +35,7 @@ async function pauseExecution() {
 
 // Make runCode async to handle await
 async function runCode() {
+    // logOutput("runCode started."); // REMOVED
     if (!parser) {
         logError("Parser not ready or failed to load. Cannot run code.");
         return;
@@ -61,10 +62,12 @@ async function runCode() {
         if (ast.declarations && ast.declarations.length > 0) {
             ast.declarations.forEach(decl => {
                 if (decl.type === 'procedureDeclaration') {
-                    if (NIKI_FUNCTIONS[decl.name]) throw new Error(`Cannot redefine built-in function: ${decl.name}`);
-                    if (procedures[decl.name]) throw new Error(`Procedure already defined: ${decl.name}`);
-                    procedures[decl.name] = decl.body;
-                    logOutput(`Registered procedure: ${decl.name}`);
+                    const procNameLower = decl.name.toLowerCase(); // Convert to lowercase for key
+                    const originalName = decl.name; // Keep original name for errors/logging
+                    if (NIKI_FUNCTIONS[procNameLower]) throw new Error(`Cannot redefine built-in function: ${originalName}`);
+                    if (procedures[procNameLower]) throw new Error(`Procedure already defined: ${originalName}`);
+                    procedures[procNameLower] = decl.body; // Store with lowercase key
+                    logOutput(`Registered procedure: ${originalName}`); // Log original name
                 }
             });
         }
@@ -77,7 +80,8 @@ async function runCode() {
         // Handle parsing, runtime, or cancellation errors
         if (e.message !== "Execution cancelled by reset.") { // Don't log cancellation as an error
             let errorMessage = `Error: ${e.message}`;
-            if (e.location) { // Add location info for parse errors
+            // Check if the error has location info (from parser) before adding it
+            if (e.location && e.location.start) {
                 errorMessage += `\n  at line ${e.location.start.line}, column ${e.location.start.column}`;
             }
             logError(errorMessage);
@@ -90,7 +94,8 @@ async function runCode() {
         isExecuting = false;
         runButtonElement.disabled = false; // Re-enable button
         runButtonElement.textContent = "Run Code";
-         logOutput("Execution ended or was stopped."); // Log end state
+         logOutput("Execution ended or was stopped.");
+        // logOutput("runCode finished."); // REMOVED
     }
 }
 
@@ -109,23 +114,26 @@ async function executeASTNode(node) {
             break;
 
         case 'procedureCall':
-            const procName = node.name;
-            if (NIKI_FUNCTIONS[procName]) {
-                NIKI_FUNCTIONS[procName](); // Built-in functions are quick state changes
+            const originalProcName = node.name; // Keep original case for logging/errors
+            const procNameLower = originalProcName.toLowerCase(); // Use lowercase for lookup
+            if (NIKI_FUNCTIONS[procNameLower]) {
+                // Log the actual called name (could be different case)
+                logOutput(`Executing built-in: ${originalProcName}`);
+                NIKI_FUNCTIONS[procNameLower](); // Built-in functions are quick state changes
                 await pauseExecution();     // Pause AFTER the built-in command executes
-            } else if (procedures[procName]) {
-                logOutput(`Executing user procedure: ${procName}`);
-                await executeASTNode(procedures[procName]); // Await the procedure's execution
+            } else if (procedures[procNameLower]) {
+                logOutput(`Executing user procedure: ${originalProcName}`);
+                await executeASTNode(procedures[procNameLower]); // Await the procedure's execution
                 // No extra pause needed here, pauses happen inside the procedure's statements
             } else {
-                throw new Error(`Undefined procedure called: ${procName}`);
+                throw new Error(`Undefined procedure called: ${originalProcName}`);
             }
             break;
 
         case 'ifStatement':
-            logOutput("Evaluating IF condition...");
+            logOutput(`Evaluating IF condition (${node.condition.name || 'complex'})...`); // Log original case if simple identifier
             const conditionMet = evaluateExpression(node.condition); // Evaluation is synchronous
-            logOutput(`IF Condition (${node.condition.name || 'complex'}): ${conditionMet}`);
+            logOutput(`IF Condition result: ${conditionMet}`);
             if (conditionMet) {
                 logOutput("Executing THEN branch.");
                 await executeASTNode(node.thenBranch); // Await the branch
@@ -134,28 +142,51 @@ async function executeASTNode(node) {
                 await executeASTNode(node.elseBranch); // Await the branch
             } else {
                 logOutput("IF condition FALSE, no ELSE branch.");
-                 await pauseExecution(); // Pause even if no branch taken? Optional. For now, no.
+                 // await pauseExecution(); // Decided against pausing here for now
             }
             break;
 
         case 'repeatStatement':
-            let loopCount = 0;
-            const maxLoops = 1000;
-            logOutput("Entering REPEAT loop...");
+            let loopCountRepeat = 0;
+            const maxLoopsRepeat = 1000;
+            const conditionNameRepeat = node.condition.name || 'complex'; // Get original name/complex indicator
+            logOutput(`Entering REPEAT loop (until ${conditionNameRepeat})...`);
             do {
-                 if (!isExecuting) break; // Check cancellation at start of loop
-                await executeASTNode(node.body); // Await the loop body's execution
-                loopCount++;
-                if (loopCount > maxLoops) throw new Error(`Max loop iterations (${maxLoops}) exceeded.`);
+                 if (!isExecuting) break;
+                await executeASTNode(node.body);
+                loopCountRepeat++;
+                if (loopCountRepeat > maxLoopsRepeat) throw new Error(`Max loop iterations (${maxLoopsRepeat}) exceeded in REPEAT.`);
 
-                 if (!isExecuting) break; // Check cancellation before condition eval
-                const untilConditionMet = evaluateExpression(node.condition); // Condition eval is sync
-                logOutput(`Loop condition check (iteration ${loopCount}): UNTIL ${node.condition.name || 'complex'} is ${untilConditionMet}`);
-                 if (untilConditionMet) break; // Exit loop if condition is true
+                 if (!isExecuting) break;
+                const untilConditionMet = evaluateExpression(node.condition); // Evaluate using potentially mixed-case name internally
+                logOutput(`Loop condition check (iteration ${loopCountRepeat}): UNTIL ${conditionNameRepeat} is ${untilConditionMet}`);
+                 if (untilConditionMet) break;
 
-                 await pauseExecution(); // Pause at the end of each loop iteration AFTER check
+                 await pauseExecution();
             } while (true);
-            logOutput("Exiting REPEAT loop.");
+             if (isExecuting) { // Log exit only if not cancelled
+                logOutput(`Exiting REPEAT loop (condition ${conditionNameRepeat} became TRUE).`);
+             }
+            break;
+
+        case 'whileStatement':
+            let loopCountWhile = 0;
+            const maxLoopsWhile = 1000;
+            const conditionNameWhile = node.condition.name || 'complex'; // Get original name/complex indicator
+            logOutput(`Entering WHILE loop (while ${conditionNameWhile})...`);
+            while (isExecuting && evaluateExpression(node.condition)) { // Condition checked first
+                logOutput(`WHILE condition ${conditionNameWhile} is TRUE. Executing body (iteration ${loopCountWhile + 1}).`);
+                await executeASTNode(node.body);
+                loopCountWhile++;
+                if (loopCountWhile > maxLoopsWhile) throw new Error(`Max loop iterations (${maxLoopsWhile}) exceeded in WHILE.`);
+
+                 if (!isExecuting) break;
+
+                await pauseExecution();
+            }
+             if (isExecuting) { // Log exit reason only if not cancelled
+                logOutput(`Exiting WHILE loop (condition ${conditionNameWhile} became FALSE).`);
+             }
             break;
 
         default:
@@ -166,25 +197,30 @@ async function executeASTNode(node) {
 function evaluateExpression(node) {
     switch (node.type) {
         case 'identifier':
-            // Assume identifiers in expressions are calls to Niki's condition functions
-            const funcName = node.name;
-            if (NIKI_FUNCTIONS[funcName] && typeof NIKI_FUNCTIONS[funcName] === 'function') {
-                const result = NIKI_FUNCTIONS[funcName]();
-                 // logOutput(`Evaluated condition '${funcName}': ${result}`); // Can be verbose, uncomment if needed
+            const originalFuncName = node.name; // Keep original case for errors
+            const funcNameLower = originalFuncName.toLowerCase(); // Use lowercase for lookup
+
+            // Check if it's a Niki condition function
+            if (NIKI_FUNCTIONS[funcNameLower] && typeof NIKI_FUNCTIONS[funcNameLower] === 'function') {
+                // Check arity or type if necessary - here assume conditions take no args and return boolean
+                // We might want to add a check later to ensure it *is* a condition function
+                const result = NIKI_FUNCTIONS[funcNameLower]();
+                // logOutput(`Evaluated condition '${originalFuncName}': ${result}`); // Verbose log with original name
                 return result;
             } else {
-                 // Check if it's a variable or undefined function
-                 if (procedures[funcName]){
-                     throw new Error(`Procedure '${funcName}' cannot be used as a condition.`);
+                 // Check if it's a defined procedure (which cannot be used as a condition)
+                 if (procedures[funcNameLower]){
+                     throw new Error(`Procedure '${originalFuncName}' cannot be used as a condition.`);
                  } else {
-                     throw new Error(`Cannot evaluate identifier as condition: ${funcName}. Is it a defined Niki condition function?`);
+                     // Otherwise, it's an undefined identifier used as a condition
+                     throw new Error(`Cannot evaluate identifier as condition: '${originalFuncName}'. Is it a defined Niki condition function?`);
                  }
             }
 
         case 'negatedExpression':
             // Evaluate the inner expression and return the opposite boolean value
             const innerResult = evaluateExpression(node.expression);
-             // logOutput(`Evaluated NOT expression: !(${node.expression?.name || 'complex'}) -> !${innerResult} -> ${!innerResult}`); // Verbose
+            // logOutput(`Evaluated NOT expression: !(${node.expression?.name || 'complex'}) -> !${innerResult} -> ${!innerResult}`); // Verbose
             return !innerResult;
 
         default:

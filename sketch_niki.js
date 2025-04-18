@@ -1,59 +1,31 @@
 // --- Niki Specific Logic ---
 
 function isColliding() {
-    // Check canvas boundaries first
+    // Check canvas boundaries first (Niki's current position)
     if ( nikiCol < 0 || nikiCol >= ARR_COLS || nikiRow < 0 || nikiRow >= ARR_ROWS) {
-       return true; // Implicit wall at boundary
+       console.warn("isColliding called while Niki is out of bounds");
+       return true;
     }
 
-     // Check current square based on direction before moving
-     let targetCol = nikiCol;
-     let targetRow = nikiRow;
-     let checkCurrentWall = false; // Should we check the wall of the current square?
-     let checkTargetWall = false; // Should we check the wall of the square Niki is facing?
-     let wallToCheck = null; // Which wall property to check
+    // Determine the immediate wall to check based on direction
+    let wallExists = false;
 
-     switch (nikiDirection % 4) {
+    switch (nikiDirection % 4) {
         case 0: // North
-            targetRow--;
-            wallToCheck = 'topWall';
-            checkCurrentWall = true;
-            if (targetRow >= 0) wallToCheck = 'bottomWall'; checkTargetWall = true; // Check wall of cell above
-            break;
+             wallExists = (nikiRow === 0 || grid[nikiCol][nikiRow].topWall);
+             break;
         case 1: // East
-            targetCol++;
-            wallToCheck = 'rightWall';
-            checkCurrentWall = true;
-            if (targetCol < ARR_COLS) wallToCheck = 'leftWall'; checkTargetWall = true; // Check wall of cell to the right
+             wallExists = (nikiCol === ARR_COLS - 1 || grid[nikiCol][nikiRow].rightWall);
              break;
         case 2: // South
-            targetRow++;
-            wallToCheck = 'bottomWall';
-            checkCurrentWall = true;
-            if (targetRow < ARR_ROWS) wallToCheck = 'topWall'; checkTargetWall = true; // Check wall of cell below
+             wallExists = (nikiRow === ARR_ROWS - 1 || grid[nikiCol][nikiRow].bottomWall);
              break;
         case 3: // West
-            targetCol--;
-            wallToCheck = 'leftWall';
-            checkCurrentWall = true;
-             if (targetCol >= 0) wallToCheck = 'rightWall'; checkTargetWall = true; // Check wall of cell to the left
+             wallExists = (nikiCol === 0 || grid[nikiCol][nikiRow].leftWall);
              break;
     }
 
-     // Check boundary collision
-     if (targetRow < 0 || targetRow >= ARR_ROWS || targetCol < 0 || targetCol >= ARR_COLS) {
-        return true;
-    }
-
-    // Check wall collision
-     if (checkCurrentWall && grid[nikiCol][nikiRow][wallToCheck]) {
-        return true;
-    }
-     // Check the wall of the target square (if applicable and exists)
-    // Note: This logic assumes walls are two-sided (setting a right wall also sets the neighbor's left wall)
-    // The check above is sufficient if walls are correctly placed by the builder.
-
-    return false; // No collision detected
+    return wallExists;
 }
 
 
@@ -109,7 +81,7 @@ const NIKI_FUNCTIONS = {
         }
         return false; // Outside grid is not 'belegt'
     },
-    hat_Vorrat: () => nikiNumOfBalls > 0,
+    hat_vorrat: () => nikiNumOfBalls > 0,
     nordwaerts: () => nikiDirection % 4 === 0,
     ostwaerts: () => nikiDirection % 4 === 1,
     suedwaerts: () => nikiDirection % 4 === 2,

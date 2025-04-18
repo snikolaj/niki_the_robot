@@ -60,6 +60,10 @@ end.
             <button id="save-button">Save Code</button>
             <button id="load-button">Load Code</button>
             <input type="file" id="load-file-input" accept=".pas,.txt" style="display: none;">
+            <select id="example-select" title="Load an example code snippet">
+                <option value="">-- Select Example --</option>
+                <!-- Options will be populated by JS -->
+            </select>
             <label style="margin-left: 15px;">
                 <input type="checkbox" id="builder-mode-checkbox" checked> Builder Mode
             </label>
@@ -80,6 +84,7 @@ end.
 
     <!-- Include the split JavaScript files in order -->
     <script src="sketch_globals.js"></script>
+    <script src="sketch_examples.js"></script>
     <script src="sketch_utils.js"></script> <!-- Utilities might be needed early -->
     <script src="sketch_grid.js"></script>
     <script src="sketch_niki.js"></script>

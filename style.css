@@ -208,4 +208,19 @@ canvas {
         max-width: 100%;
         height: auto; /* Maintain aspect ratio */
     }
+}
+
+{{ Add styling for the select dropdown }}
+#controls select {
+    padding: 7px 10px; /* Adjust padding to match buttons */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: white;
+    cursor: pointer;
+    font-size: 0.9em;
+    /* Add some spacing if needed */
+    margin-right: 5px;
+}
+#controls select:hover {
+    border-color: #aaa;
 } 

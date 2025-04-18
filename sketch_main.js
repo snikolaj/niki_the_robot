@@ -4,6 +4,8 @@
 let saveButtonElement;
 let loadButtonElement;
 let loadFileInputElement;
+let exampleSelectElement;
+let isCodeSaved = false;
 
 function preload() {
     logOutput("Preloading assets...");
@@ -34,6 +36,7 @@ function setup() {
     saveButtonElement = document.getElementById('save-button'); // Cache save button
     loadButtonElement = document.getElementById('load-button'); // Cache load button
     loadFileInputElement = document.getElementById('load-file-input'); // Cache file input
+    exampleSelectElement = document.getElementById('example-select'); // Cache example select
 
 
     // --- Event Listeners ---
@@ -44,9 +47,17 @@ function setup() {
     saveButtonElement.addEventListener('click', saveCodeToFile); // Add listener for save
     loadButtonElement.addEventListener('click', () => loadFileInputElement.click()); // Trigger file input on load click
     loadFileInputElement.addEventListener('change', loadFileContent); // Add listener for file selection
+    exampleSelectElement.addEventListener('change', loadSelectedExample); // Add listener for example select
     handleTabInTextarea(editor);
     canvas.mousePressed(builderMousePressed);
     canvas.mouseClicked(builderMouseClicked);
+
+    // --- Listener for code editor changes ---
+    editor.addEventListener('input', () => {
+        if (isCodeSaved) {
+            isCodeSaved = false;
+        }
+    });
 
     // Speed Slider Listener
     speedSliderElement.addEventListener('input', (e) => {
@@ -56,25 +67,20 @@ function setup() {
 
     // --- Before Unload Listener ---
     window.addEventListener('beforeunload', (event) => {
-        const codeEditor = document.getElementById('code-editor');
-        // Check if the editor has non-whitespace content
-        if (codeEditor && codeEditor.value.trim() !== '') {
+        if (!isCodeSaved) {
             console.log("Beforeunload listener: Unsaved changes detected.");
             const confirmationMessage = 'You have unsaved code. Are you sure you want to leave?';
-            // Standard way to trigger the browser's confirmation dialog
             event.preventDefault();
-            // Required for modern browsers and compatibility
             event.returnValue = confirmationMessage;
-            // Explicitly return the message for older browsers/potential quirks
             return confirmationMessage;
         }
-        // If the editor is empty, the event proceeds normally without a prompt
     });
     // --- End Before Unload Listener ---
 
     // --- End Event Listeners ---
 
     // Initialize state and display
+    populateExampleDropdown(); // Fill the dropdown
     resetNiki(); // Sets initial state, calls createGrid etc.
     updateSpeedLabel(); // Set initial speed label text
     logOutput("Setup complete. Ready.");
@@ -108,6 +114,7 @@ function resetNiki() {
     procedures = {};
     clearError();
     updateBallCounterDisplay();
+    isCodeSaved = false;
     logOutput("Reset complete.");
 }
 
@@ -125,38 +132,33 @@ function saveCodeToFile() {
     document.body.removeChild(link); // Clean up
     URL.revokeObjectURL(url); // Release object URL
     logOutput("Code saved to niki_code.pas");
+    isCodeSaved = true;
 }
 
 function loadFileContent(event) {
     const file = event.target.files[0];
     if (!file) {
         logOutput("No file selected.");
-        // Reset the input value even if no file selected, to allow immediate re-selection
         event.target.value = null;
         return;
     }
 
-    // --- Confirmation Check ---
-    const editor = document.getElementById('code-editor');
-    const currentCode = editor.value.trim();
-
-    if (currentCode !== '') {
-        const proceed = confirm("Loading this file will overwrite the current code in the editor. Are you sure you want to continue?");
+    if (!isCodeSaved) {
+        const proceed = confirm("Loading this file will overwrite unsaved changes in the editor. Are you sure you want to continue?");
         if (!proceed) {
             logOutput("File load cancelled by user.");
-            event.target.value = null; // Reset input value
-            return; // Stop execution if user cancels
+            event.target.value = null;
+            return;
         }
     }
-    // --- End Confirmation Check ---
-
 
     const reader = new FileReader();
     reader.onload = function(e) {
         const content = e.target.result;
-        editor.value = content; // Use the cached editor element
+        document.getElementById('code-editor').value = content;
         logOutput(`File "${file.name}" loaded successfully.`);
-        clearError(); // Clear any previous errors when loading new code
+        isCodeSaved = false;
+        clearError();
     };
     reader.onerror = function(e) {
         logError(`Error reading file "${file.name}": ${e.target.error}`);
@@ -164,7 +166,81 @@ function loadFileContent(event) {
     };
     reader.readAsText(file);
 
-    // Reset the input value to allow loading the same file again
     event.target.value = null;
 }
-// --- End Save and Load Functions --- 
+// --- End Save and Load Functions ---
+
+// --- Example Loading Functions ---
+
+function populateExampleDropdown() {
+    if (!exampleSelectElement || typeof EXAMPLE_CODE === 'undefined') {
+        logError("Could not populate examples: Dropdown element or example data missing.");
+        return;
+    }
+
+    const categories = {};
+    // Group examples by category
+    EXAMPLE_CODE.forEach((example, index) => {
+        if (!categories[example.category]) {
+            categories[example.category] = [];
+        }
+        // Store index along with title for easy lookup later
+        categories[example.category].push({ title: example.title, index: index });
+    });
+
+    // Clear existing options except the first default one
+    while (exampleSelectElement.options.length > 1) {
+        exampleSelectElement.remove(1);
+    }
+
+    // Create optgroups and options
+    for (const category in categories) {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = category;
+        categories[category].forEach(item => {
+            const option = document.createElement('option');
+            option.value = item.index; // Store the index as the value
+            option.textContent = item.title;
+            optgroup.appendChild(option);
+        });
+        exampleSelectElement.appendChild(optgroup);
+    }
+    logOutput("Example dropdown populated.");
+}
+
+
+function loadSelectedExample(event) {
+    const selectedIndex = event.target.value;
+
+    if (selectedIndex === "") { // "-- Select Example --" chosen
+        return;
+    }
+
+    const exampleIndex = parseInt(selectedIndex, 10);
+    if (isNaN(exampleIndex) || exampleIndex < 0 || exampleIndex >= EXAMPLE_CODE.length) {
+        logError(`Invalid example index selected: ${selectedIndex}`);
+        event.target.value = ""; // Reset dropdown
+        return;
+    }
+
+    // Check for unsaved changes
+    if (!isCodeSaved) {
+        const proceed = confirm("Loading this example will overwrite unsaved changes in the editor. Are you sure you want to continue?");
+        if (!proceed) {
+            logOutput("Example load cancelled by user.");
+            event.target.value = ""; // Reset dropdown
+            return;
+        }
+    }
+
+    const example = EXAMPLE_CODE[exampleIndex];
+    document.getElementById('code-editor').value = example.code;
+    logOutput(`Example "${example.title}" loaded successfully.`);
+    isCodeSaved = false; // Loaded code is initially unsaved
+    clearError(); // Clear any previous errors
+
+    // Reset the dropdown back to the default option
+    event.target.value = "";
+}
+
+// --- End Example Loading Functions --- 

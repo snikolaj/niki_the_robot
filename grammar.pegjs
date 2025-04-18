@@ -11,18 +11,18 @@ start
   = _ program:program _ { return program; }
 
 program
-  = "program" __ name:identifier _ ";" _ decls:declarations main:compound_statement "." _
+  = "program"i __ name:identifier _ ";" _ decls:declarations main:compound_statement "." _
   { return { type: "program", name: name.name, declarations: decls, main: main }; }
 
 declarations
   = procs:(procedure_declaration*) { return procs; }
 
 procedure_declaration
-  = "procedure" __ name:identifier _ ";" _ body:compound_statement ";" _
+  = "procedure"i __ name:identifier _ ";" _ body:compound_statement ";" _
   { return { type: "procedureDeclaration", name: name.name, body: body }; }
 
 compound_statement
-  = "begin" _ statements:statement_sequence _ "end"
+  = "begin"i _ statements:statement_sequence _ "end"i
   { return makeBlock(statements); }
 
 // The key change: handling statement sequence with proper termination
@@ -42,13 +42,14 @@ statement
   = procedure_call
   / if_statement
   / repeat_statement
+  / while_statement
   / compound_statement
 
 procedure_call
   = name:identifier { return { type: "procedureCall", name: name.name }; }
 
 if_statement
-  = "if" __ condition:expression __ "then" _ then_branch:statement else_part:else_part? {
+  = "if"i __ condition:expression __ "then"i _ then_branch:statement else_part:else_part? {
       return {
         type: "ifStatement",
         condition: condition,
@@ -58,18 +59,22 @@ if_statement
     }
 
 else_part
-  = _ "else" _ statement:statement { return statement; }
+  = _ "else"i _ statement:statement { return statement; }
 
 repeat_statement
-  = "repeat" _ body:statement_sequence _ "until" __ condition:expression
+  = "repeat"i _ body:statement_sequence _ "until"i __ condition:expression
   { return { type: "repeatStatement", body: makeBlock(body), condition: condition }; }
+
+while_statement
+  = "while"i __ condition:expression __ "do"i _ body:statement
+  { return { type: "whileStatement", condition: condition, body: body }; }
 
 expression
   = negated_expression
   / identifier
 
 negated_expression
-  = "not" __ expr:expression { return { type: "negatedExpression", expression: expr }; }
+  = "not"i __ expr:expression { return { type: "negatedExpression", expression: expr }; }
 
 // --- Lexical Elements ---
 
@@ -79,7 +84,7 @@ identifier "identifier"
 
 // Keywords that cannot be identifiers
 keyword
-  = ("program" / "procedure" / "begin" / "end" / "if" / "then" / "else" / "repeat" / "until" / "not") ![a-zA-Z0-9_]
+  = ("program"i / "procedure"i / "begin"i / "end"i / "if"i / "then"i / "else"i / "repeat"i / "until"i / "not"i / "while"i / "do"i) ![a-zA-Z0-9_]
 
 // Whitespace and Comments
 _ "whitespace"
