@@ -76,6 +76,15 @@ end.
                  <input type="range" id="speed-slider" min="1" max="100" value="10">
                  <span id="speed-label">10</span> cmd/s
             </div>
+            <button id="help-button" style="margin-left: auto;">Help / Instructions</button>
+        </div>
+        <!-- Dimension Controls -->
+        <div id="dimension-controls">
+            <label for="cols-input">Cols:</label>
+            <input type="number" id="cols-input" min="1" max="100" value="10"> <!-- Default value should match sketch_globals.js -->
+            <label for="rows-input">Rows:</label>
+            <input type="number" id="rows-input" min="1" max="100" value="10"> <!-- Default value should match sketch_globals.js -->
+            <button id="apply-dimensions-button">Apply Dimensions</button>
         </div>
         <div id="error-log"></div>
     </div>
@@ -83,6 +92,76 @@ end.
         <!-- Add the ball counter element -->
         <div id="ball-counter">Niki's Balls: 0</div>
         <!-- p5.js canvas will be created here by sketch.js -->
+    </div>
+
+    <!-- Add Instructions Modal Structure (Hidden by default) -->
+    <div id="instructions-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Niki the Robot - Instructions</h2>
+
+            <h3>Editor & Controls</h3>
+            <ul>
+                <li><strong>Code Editor:</strong> Write Niki Pascal code here. Use standard Pascal syntax for procedures, begin/end blocks, if/then/else, repeat/until.</li>
+                <li><strong>Run Code:</strong> Parses and executes the code in the editor.</li>
+                <li><strong>Reset Niki:</strong> Stops execution, resets Niki's position/balls, and clears the grid (based on current dimensions).</li>
+                <li><strong>Save Code:</strong> Saves the current code in the editor to a `.pas` file.</li>
+                <li><strong>Load Code:</strong> Loads code from a `.pas` file into the editor.</li>
+                <li><strong>Save Grid:</strong> Saves the current grid layout (walls, balls, Niki's state, dimensions) to a `.json` file.</li>
+                <li><strong>Load Grid:</strong> Loads a grid layout from a `.json` file. Will prompt if dimensions mismatch.</li>
+                <li><strong>Select Example:</strong> Load pre-written example code snippets.</li>
+                <li><strong>Builder Mode Checkbox:</strong> Toggle Builder Mode on/off.</li>
+                <li><strong>Speed Slider:</strong> Control the execution speed (commands per second).</li>
+                <li><strong>Dimension Controls:</strong> Set grid columns/rows and click "Apply Dimensions" (this resets the grid).</li>
+                <li><strong>Help Button:</strong> Shows these instructions.</li>
+            </ul>
+
+            <h3>Builder Mode (Checkbox Checked)</h3>
+            <ul>
+                <li><strong>Left Click (Center):</strong> Add a ball to the square.</li>
+                <li><strong>Right Click (Center):</strong> Remove a ball from the square (if any).</li>
+                <li><strong>Left Click (Edge):</strong> Toggle a wall on/off (also affects the neighbor square).</li>
+                <li><strong>Right Click (Edge):</strong> Remove a wall (also affects the neighbor square).</li>
+                <li><strong>Middle Click:</strong> Place Niki at the clicked square.</li>
+            </ul>
+
+             <h3>Interaction Mode (Builder Mode Unchecked)</h3>
+            <ul>
+                <li><strong>Click & Drag Niki:</strong> Move Niki to a different square by clicking on him and dragging the mouse.</li>
+            </ul>
+
+            <h3>Niki Pascal Commands</h3>
+            <ul>
+                <li><code>vor</code>: Move Niki one square forward in his current direction. Crashes if blocked by a wall.</li>
+                <li><code>drehe_links</code>: Turn Niki 90 degrees left.</li>
+                <li><code>gib_ab</code>: Drop one ball onto the current square. Fails if Niki has no balls.</li>
+                <li><code>nimm_auf</code>: Pick up one ball from the current square. Fails if the square has no balls.</li>
+            </ul>
+            <h4>Helper Procedures (Commonly Defined)</h4>
+            <ul>
+                <li><code>turn_right</code> (usually <code>drehe_links; drehe_links; drehe_links</code>)</li>
+                <li><code>turn_around</code> (usually <code>drehe_links; drehe_links</code>)</li>
+            </ul>
+
+            <h3>Niki Pascal Conditions (for <code>if</code> and <code>until</code>)</h3>
+            <ul>
+                <li><code>vorne_frei</code>: True if the square in front of Niki is not blocked by a wall.</li>
+                <li><code>platz_belegt</code>: True if the current square Niki is on contains at least one ball.</li>
+                <li><code>hat_vorrat</code>: True if Niki is currently carrying at least one ball.</li>
+                <li><code>nordwaerts</code>: True if Niki is facing North (Up).</li>
+                <li><code>ostwaerts</code>: True if Niki is facing East (Right).</li>
+                <li><code>suedwaerts</code>: True if Niki is facing South (Down).</li>
+                <li><code>westwaerts</code>: True if Niki is facing West (Left).</li>
+            </ul>
+
+            <h3>Notes</h3>
+            <ul>
+                <li>Save your code and grid frequently!</li>
+                <li>The browser will warn you if you try to leave the page with unsaved code or grid changes.</li>
+                <li>Loading code/grids or changing dimensions may overwrite unsaved work (you will be prompted).</li>
+            </ul>
+
+        </div>
     </div>
 
     <!-- Include the split JavaScript files in order -->

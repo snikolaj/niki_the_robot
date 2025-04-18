@@ -8,6 +8,13 @@ let exampleSelectElement;
 let saveGridButtonElement;
 let loadGridButtonElement;
 let loadGridInputElement;
+let colsInputElement;
+let rowsInputElement;
+let applyDimensionsButtonElement;
+let helpButtonElement;
+let instructionsModalElement;
+let closeModalButtonElement;
+let p5Canvas;
 let isCodeSaved = false;
 let isGridSaved = true; // Track grid changes
 
@@ -27,8 +34,8 @@ function preload() {
 
 function setup() {
     logOutput("Setting up canvas and listeners...");
-    let canvas = createCanvas(ARR_COLS * RECT_WIDTH, ARR_ROWS * RECT_HEIGHT);
-    canvas.parent('canvas-container');
+    p5Canvas = createCanvas(ARR_COLS * RECT_WIDTH, ARR_ROWS * RECT_HEIGHT);
+    p5Canvas.parent('canvas-container');
 
     // Cache HTML elements
     runButtonElement = document.getElementById('run-button');
@@ -44,10 +51,17 @@ function setup() {
     saveGridButtonElement = document.getElementById('save-grid-button');
     loadGridButtonElement = document.getElementById('load-grid-button');
     loadGridInputElement = document.getElementById('load-grid-input');
+    colsInputElement = document.getElementById('cols-input');
+    rowsInputElement = document.getElementById('rows-input');
+    applyDimensionsButtonElement = document.getElementById('apply-dimensions-button');
+    helpButtonElement = document.getElementById('help-button');
+    instructionsModalElement = document.getElementById('instructions-modal');
+    // Get close button inside modal
+    closeModalButtonElement = instructionsModalElement.querySelector('.close-button');
 
 
     // --- Event Listeners ---
-    canvas.elt.addEventListener('contextmenu', (e) => e.preventDefault());
+    p5Canvas.elt.addEventListener('contextmenu', (e) => e.preventDefault()); // Keep this for disabling right-click menu
     runButtonElement.addEventListener('click', runCode); // runCode is now async
     document.getElementById('reset-button').addEventListener('click', resetNiki);
     document.getElementById('builder-mode-checkbox').addEventListener('change', handleBuilderModeToggle);
@@ -58,9 +72,26 @@ function setup() {
     saveGridButtonElement.addEventListener('click', saveGridToFile);
     loadGridButtonElement.addEventListener('click', () => loadGridInputElement.click());
     loadGridInputElement.addEventListener('change', loadGridFromFile);
-    handleTabInTextarea(editor);
-    canvas.mousePressed(builderMousePressed);
-    canvas.mouseClicked(builderMouseClicked);
+    applyDimensionsButtonElement.addEventListener('click', applyNewDimensions);
+    handleTabInTextarea(editor); // Keep this
+
+    // Add listeners for modal
+    helpButtonElement.addEventListener('click', () => {
+        instructionsModalElement.style.display = 'block';
+        logOutput("Instructions opened.");
+    });
+    closeModalButtonElement.addEventListener('click', () => {
+        instructionsModalElement.style.display = 'none';
+        logOutput("Instructions closed.");
+    });
+    // Optional: Close modal if clicked outside content
+    window.addEventListener('click', (event) => {
+        if (event.target === instructionsModalElement) {
+            instructionsModalElement.style.display = 'none';
+            logOutput("Instructions closed (clicked outside).");
+        }
+    });
+
 
     // --- Listener for code editor changes ---
     editor.addEventListener('input', () => {
@@ -98,6 +129,8 @@ function setup() {
 
     // Initialize state and display
     populateExampleDropdown(); // Fill the dropdown
+    colsInputElement.value = ARR_COLS;
+    rowsInputElement.value = ARR_ROWS;
     resetNiki(); // Sets initial state, calls createGrid etc.
     updateSpeedLabel(); // Set initial speed label text
     logOutput("Setup complete. Ready.");
@@ -238,10 +271,11 @@ function loadGridFromFile(event) {
         return;
     }
 
+    // Check for unsaved changes *before* reading the file
     if (!isGridSaved) {
-        const proceed = confirm("Loading this grid will overwrite unsaved changes. Are you sure you want to continue?");
-        if (!proceed) {
-            logOutput("Grid load cancelled by user.");
+        const proceedUnsaved = confirm("Loading a new grid will overwrite unsaved changes. Are you sure you want to continue?");
+        if (!proceedUnsaved) {
+            logOutput("Grid load cancelled by user (unsaved changes).");
             event.target.value = null;
             return;
         }
@@ -252,25 +286,58 @@ function loadGridFromFile(event) {
         try {
             const gridData = JSON.parse(e.target.result);
 
-            // --- Validation ---
+            // --- Validation (Basic Structure) ---
             if (!gridData || typeof gridData !== 'object') throw new Error("Invalid JSON structure.");
-            if (!gridData.dimensions || gridData.dimensions.cols !== ARR_COLS || gridData.dimensions.rows !== ARR_ROWS) {
-                throw new Error(`Grid dimensions in file (${gridData.dimensions?.cols}x${gridData.dimensions?.rows}) do not match current setup (${ARR_COLS}x${ARR_ROWS}).`);
+            if (!gridData.dimensions || typeof gridData.dimensions !== 'object') throw new Error("Missing or invalid dimensions data in JSON.");
+            const fileCols = gridData.dimensions.cols;
+            const fileRows = gridData.dimensions.rows;
+            if (typeof fileCols !== 'number' || typeof fileRows !== 'number' || fileCols < 1 || fileRows < 1) {
+                 throw new Error(`Invalid dimensions (${fileCols}x${fileRows}) found in JSON file.`);
             }
             if (!gridData.niki || typeof gridData.niki !== 'object') throw new Error("Missing or invalid Niki data.");
             if (!Array.isArray(gridData.squares)) throw new Error("Missing or invalid squares data.");
 
-            // --- Reset and Apply ---
-            createGrid(); // Reset grid to default empty state
 
-            // Restore Niki state
+            // --- Handle Dimension Mismatch ---
+            if (fileCols !== ARR_COLS || fileRows !== ARR_ROWS) {
+                const proceedResize = confirm(`The loaded grid has different dimensions (${fileCols}x${fileRows}). Apply these dimensions? This will reset the current grid and Niki's position before loading.`);
+                if (proceedResize) {
+                    logOutput(`Resizing grid to match file: ${fileCols}x${fileRows}`);
+                    ARR_COLS = fileCols;
+                    ARR_ROWS = fileRows;
+                    colsInputElement.value = ARR_COLS; // Update UI input
+                    rowsInputElement.value = ARR_ROWS; // Update UI input
+                    resizeCanvas(ARR_COLS * RECT_WIDTH, ARR_ROWS * RECT_HEIGHT);
+                    // createGrid() will be called next as part of the reset logic
+                } else {
+                    logOutput("Grid load cancelled by user (dimension mismatch).");
+                    event.target.value = null;
+                    return; // Stop loading
+                }
+            }
+
+            // --- Reset and Apply ---
+            // Reset grid to default empty state *with potentially new dimensions*
+            // We avoid calling resetNiki() here as it resets Niki's ball count etc.
+            // which we want to load from the file.
+            createGrid();
+            clearError(); // Clear previous errors
+
+            // Restore Niki state from file
             nikiCol = gridData.niki.col ?? Math.floor(ARR_COLS / 2);
             nikiRow = gridData.niki.row ?? Math.floor(ARR_ROWS / 2);
+            // Validate Niki's position against new grid size
+            if (nikiCol < 0 || nikiCol >= ARR_COLS || nikiRow < 0 || nikiRow >= ARR_ROWS) {
+                logWarn(`Niki position (${gridData.niki.col}, ${gridData.niki.row}) from file is outside the new grid bounds (${ARR_COLS}x${ARR_ROWS}). Resetting to center.`);
+                 nikiCol = Math.floor(ARR_COLS / 2);
+                 nikiRow = Math.floor(ARR_ROWS / 2);
+            }
             nikiDirection = gridData.niki.direction ?? (1 << 30); // Default UP
             nikiNumOfBalls = gridData.niki.balls ?? 0;
             updateBallCounterDisplay();
 
-            // Apply square data
+
+            // Apply square data from file
             gridData.squares.forEach(squareData => {
                 const { col, row, balls, top, right, bottom, left } = squareData;
                 if (col >= 0 && col < ARR_COLS && row >= 0 && row < ARR_ROWS) {
@@ -392,4 +459,207 @@ function loadSelectedExample(event) {
     event.target.value = "";
 }
 
-// --- End Example Loading Functions --- 
+// --- End Example Loading Functions ---
+
+// --- Add new functions ---
+
+function applyNewDimensions() {
+    const newCols = parseInt(colsInputElement.value, 10);
+    const newRows = parseInt(rowsInputElement.value, 10);
+
+    // --- Validation ---
+    if (isNaN(newCols) || isNaN(newRows) || newCols < 1 || newRows < 1 || newCols > 100 || newRows > 100) {
+        logError("Invalid dimensions: Columns and Rows must be numbers between 1 and 100.");
+        colsInputElement.value = ARR_COLS;
+        rowsInputElement.value = ARR_ROWS;
+        return;
+    }
+
+    // --- Check if dimensions actually changed ---
+    if (newCols === ARR_COLS && newRows === ARR_ROWS) {
+        logOutput("Dimensions haven't changed.");
+        return;
+    }
+
+    // --- Confirmation ---
+    let confirmationMessage = `Changing dimensions to ${newCols}x${newRows}.`;
+    if (newCols < ARR_COLS || newRows < ARR_ROWS) {
+        confirmationMessage += "\nShrinking the grid will remove any items (walls, balls) outside the new bounds.";
+    }
+    if (nikiCol >= newCols || nikiRow >= newRows) {
+        confirmationMessage += `\nNiki is currently outside the new bounds and will be moved to the center.`;
+    }
+    if (!isGridSaved) {
+        confirmationMessage += "\n\nWarning: You also have other unsaved grid changes.";
+    }
+    confirmationMessage += "\n\nProceed?";
+
+    const proceed = confirm(confirmationMessage);
+
+    if (!proceed) {
+        logOutput("Dimension change cancelled by user.");
+        colsInputElement.value = ARR_COLS;
+        rowsInputElement.value = ARR_ROWS;
+        return;
+    }
+
+    // --- Apply Changes ---
+    logOutput(`Applying new dimensions: ${newCols}x${newRows}`);
+
+    const oldCols = ARR_COLS;
+    const oldRows = ARR_ROWS;
+    const oldGrid = grid; // Keep a reference to the old grid data
+
+    // Update global dimensions
+    ARR_COLS = newCols;
+    ARR_ROWS = newRows;
+
+    // 1. Create the new grid structure and copy/preserve old data
+    let newGrid = new Array(ARR_COLS);
+    for (let i = 0; i < ARR_COLS; i++) {
+        newGrid[i] = new Array(ARR_ROWS);
+        for (let j = 0; j < ARR_ROWS; j++) {
+            // If this cell existed in the old grid, copy its data
+            if (i < oldCols && j < oldRows) {
+                newGrid[i][j] = oldGrid[i][j]; // Copy the GridSquare object reference
+            } else {
+                // Otherwise, it's a new cell, initialize it
+                newGrid[i][j] = new GridSquare();
+            }
+        }
+    }
+    grid = newGrid; // Assign the newly created grid
+
+    // 2. Check and potentially reset Niki's position if out of new bounds
+    //    Keep Niki's ball count and direction regardless.
+    if (nikiCol >= ARR_COLS || nikiRow >= ARR_ROWS) {
+        logWarn(`Niki was outside the new grid bounds (${nikiCol}, ${nikiRow}). Resetting position to center.`);
+        nikiCol = Math.floor(ARR_COLS / 2);
+        nikiRow = Math.floor(ARR_ROWS / 2);
+        // Niki's direction and ball count remain unchanged
+    }
+
+    // 3. Update UI input fields
+    colsInputElement.value = ARR_COLS;
+    rowsInputElement.value = ARR_ROWS;
+
+    // 4. Resize the p5.js canvas
+    resizeCanvas(ARR_COLS * RECT_WIDTH, ARR_ROWS * RECT_HEIGHT);
+
+    // 5. Perform necessary partial resets
+    isExecuting = false; // Stop any code execution
+    if (runButtonElement) {
+        runButtonElement.disabled = false;
+        runButtonElement.textContent = "Run Code";
+    }
+    procedures = {}; // Clear parsed procedures as they might rely on old grid state
+    clearError(); // Clear any execution errors
+    updateBallCounterDisplay(); // Update display (Niki's ball count shouldn't change unless repositioned, but good practice)
+    isGridSaved = false; // Mark grid as modified/unsaved due to resize
+
+    logOutput(`Grid resized to ${ARR_COLS}x${ARR_ROWS}. Content preserved within bounds.`);
+}
+
+// --- General Canvas Mouse Handlers ---
+
+function mousePressed() {
+    // Prevent interaction outside canvas or if modal is open
+    if (mouseX < 0 || mouseY < 0 || mouseX > width || mouseY > height || instructionsModalElement.style.display === 'block') {
+        return;
+    }
+
+    if (builderMode) {
+        builderMousePressed(); // Call the function from sketch_builder.js
+    } else {
+        // Interaction Mode: Check for Niki drag start
+        const col = Math.floor(mouseX / RECT_WIDTH);
+        const row = Math.floor(mouseY / RECT_HEIGHT);
+        if (col === nikiCol && row === nikiRow) {
+            isDraggingNiki = true;
+            // Optional: Add visual feedback for dragging start? (e.g., change cursor)
+            p5Canvas.elt.style.cursor = 'grabbing'; // Change cursor
+            logOutput(`Started dragging Niki from (${nikiCol}, ${nikiRow})`);
+        }
+    }
+     // Prevent default browser drag behavior if needed
+     // return false;
+}
+
+function mouseDragged() {
+     // Prevent interaction outside canvas or if modal is open
+    if (mouseX < 0 || mouseY < 0 || mouseX > width || mouseY > height || instructionsModalElement.style.display === 'block') {
+        // If dragging started and mouse went out, maybe cancel drag?
+        if (isDraggingNiki) {
+             mouseReleased(); // Treat as release/cancel
+        }
+        return;
+    }
+
+    if (builderMode) {
+        // No default drag action in builder mode yet
+    } else {
+        if (isDraggingNiki) {
+             // No visual update during drag in this simple version,
+             // Niki position updates on release.
+             // We could add visual feedback here if desired (e.g., draw ghost Niki)
+        }
+    }
+}
+
+function mouseReleased() {
+     // Always reset cursor on release
+     p5Canvas.elt.style.cursor = 'default';
+
+    // Prevent interaction outside canvas or if modal is open
+    if (mouseX < 0 || mouseY < 0 || mouseX > width || mouseY > height || instructionsModalElement.style.display === 'block') {
+        // If mouse was released outside while dragging, ensure dragging stops
+         if (isDraggingNiki) {
+            isDraggingNiki = false;
+            logOutput("Niki drag cancelled (released outside).");
+        }
+        return;
+    }
+
+    if (builderMode) {
+        // No default release action in builder mode
+    } else {
+        if (isDraggingNiki) {
+            const targetCol = Math.floor(mouseX / RECT_WIDTH);
+            const targetRow = Math.floor(mouseY / RECT_HEIGHT);
+
+            // Check if target is within bounds and different from start
+            if (targetCol >= 0 && targetCol < ARR_COLS && targetRow >= 0 && targetRow < ARR_ROWS) {
+                if (targetCol !== nikiCol || targetRow !== nikiRow) {
+                    nikiCol = targetCol;
+                    nikiRow = targetRow;
+                    isGridSaved = false; // Mark grid as modified
+                    logOutput(`Niki dropped at (${nikiCol}, ${nikiRow})`);
+                } else {
+                     logOutput("Niki drag ended at the same spot.");
+                }
+            } else {
+                logOutput("Niki drag ended outside valid grid area.");
+            }
+            isDraggingNiki = false;
+        }
+    }
+}
+
+function mouseClicked() {
+     // Prevent interaction outside canvas or if modal is open
+    if (mouseX < 0 || mouseY < 0 || mouseX > width || mouseY > height || instructionsModalElement.style.display === 'block') {
+        return;
+    }
+
+    if (builderMode) {
+         // Handle middle click for placing Niki
+        if (mouseButton === CENTER) {
+             builderMouseClicked(); // Call builder's click handler
+        }
+        // Builder mode left/right clicks are handled by mousePressed (previously builderMousePressed)
+    } else {
+        // No specific click action in interaction mode (only drag)
+    }
+}
+
+// --- End General Canvas Mouse Handlers --- 

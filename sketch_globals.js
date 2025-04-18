@@ -1,37 +1,33 @@
-// --- Global Constants and State ---
+// --- Global Variables & Constants ---
 
-// Playfield dimensions
-const ARR_ROWS = 10;
-const ARR_COLS = 15;
+// Grid dimensions (Changable via UI)
+let ARR_COLS = 10;
+let ARR_ROWS = 10;
+
+// Visuals
 const RECT_WIDTH = 32;
 const RECT_HEIGHT = 32;
 
-// Niki images (initialized in preload)
-let nikiUp, nikiLeft, nikiDown, nikiRight;
+// Niki's state
+let nikiCol, nikiRow, nikiDirection, nikiNumOfBalls;
+let nikiUp, nikiRight, nikiDown, nikiLeft; // p5 image objects
 
-// Grid state (initialized in createGrid)
-let grid;
+// Grid state
+let grid; // 2D array of GridSquare objects
 
-// Niki state (initialized in resetNiki)
-let nikiCol = 0;
-let nikiRow = 0;
-let nikiDirection = (1 << 30); // Start North
-let nikiNumOfBalls = 0;
+// Interpreter state
+let parser; // Peggy parser instance
+let procedures = {}; // Store parsed procedures
+let isExecuting = false; // Flag for interpreter execution
+let commandsPerSecond = 10; // Default execution speed
 
-// Builder mode state
-let builderMode = true;
-
-// Parser and AST state
-let parser; // Initialized in preload
-let procedures = {}; // Initialized in runCode/resetNiki
-
-// --- Execution Control ---
-let commandsPerSecond = 10; // Default speed
-let isExecuting = false;    // Flag to prevent overlaps
-let runButtonElement;       // To disable/enable run button
-
-// HTML Elements (initialized in setup/utils)
+// UI Elements (Initialized in setup)
+let runButtonElement;
+let speedSliderElement;
 let errorLogElement;
 let ballCounterElement;
-let speedSliderElement;
-let speedLabelElement; 
+let speedLabelElement;
+
+// Builder Mode
+let builderMode = true; // Default to builder mode enabled
+let isDraggingNiki = false;

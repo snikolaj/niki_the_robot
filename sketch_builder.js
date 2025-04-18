@@ -6,14 +6,22 @@ function handleBuilderModeToggle(e) {
 }
 
 function builderMousePressed() {
-    if (!builderMode || mouseX < 0 || mouseY < 0 || mouseX > width || mouseY > height) {
-        return; // Only operate within canvas and in builder mode
-    }
+    // Remove the initial redundant check, as canvasMousePressed already handles mode/bounds
+    // if (!builderMode || mouseX < 0 || mouseY < 0 || mouseX > width || mouseY > height) {
+    //     return;
+    // }
+
+    // Add a log to confirm entry and check mouseButton
+    console.log(`builderMousePressed called. Button: ${mouseButton}, LEFT: ${LEFT}, RIGHT: ${RIGHT}`);
 
     const col = Math.floor(mouseX / RECT_WIDTH);
     const row = Math.floor(mouseY / RECT_HEIGHT);
 
-    if (col < 0 || col >= ARR_COLS || row < 0 || row >= ARR_ROWS) return;
+    // Also check bounds here just in case, though canvasMousePressed should cover it
+    if (col < 0 || col >= ARR_COLS || row < 0 || row >= ARR_ROWS) {
+        console.log("builderMousePressed: Click outside grid bounds.");
+        return;
+    }
 
     const xInRect = mouseX % RECT_WIDTH;
     const yInRect = mouseY % RECT_HEIGHT;
@@ -95,10 +103,15 @@ function builderMousePressed() {
 }
 
 function builderMouseClicked() {
-     if (!builderMode || mouseX < 0 || mouseY < 0 || mouseX > width || mouseY > height) {
-        return;
-    }
-     const col = Math.floor(mouseX / RECT_WIDTH);
+    // Remove the initial redundant check
+    // if (!builderMode || mouseX < 0 || mouseY < 0 || mouseX > width || mouseY > height) {
+    //    return;
+    //}
+
+    // Add a log to confirm entry
+    logOutput("builderMouseClicked called. Button:");
+
+    const col = Math.floor(mouseX / RECT_WIDTH);
     const row = Math.floor(mouseY / RECT_HEIGHT);
      if (col < 0 || col >= ARR_COLS || row < 0 || row >= ARR_ROWS) return;
 
